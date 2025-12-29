@@ -6,72 +6,120 @@
 
 @layer base {
   :root {
-    /* Dark FinTech Theme - Inspired by Stripe/Coinbase Pro */
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Light Mode - Paxos Theme */
+    --background: 0 0% 96%;
+    --foreground: 0 0% 10%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
 
-    /* Electric Cyan Primary */
-    --primary: 199 89% 48%;
-    --primary-foreground: 222 47% 6%;
+    /* Paxos Green Primary */
+    --primary: 122 39% 49%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Dark Slate Secondary */
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 93%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 40%;
 
-    --accent: 199 89% 48%;
-    --accent-foreground: 222 47% 6%;
+    --accent: 122 39% 49%;
+    --accent-foreground: 0 0% 100%;
 
     /* Success Green */
-    --success: 142 76% 36%;
-    --success-foreground: 210 40% 98%;
+    --success: 122 39% 49%;
+    --success-foreground: 0 0% 100%;
 
     /* Warning Amber */
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 6%;
+    --warning: 36 100% 50%;
+    --warning-foreground: 0 0% 10%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 4 90% 58%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 17%;
-    --ring: 199 89% 48%;
+    --border: 0 0% 85%;
+    --input: 0 0% 90%;
+    --ring: 122 39% 49%;
 
     --radius: 0.75rem;
 
-    /* Sidebar */
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 215 20% 65%;
-    --sidebar-primary: 199 89% 48%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 217 33% 12%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 15%;
-    --sidebar-ring: 199 89% 48%;
+    /* Sidebar Light Mode */
+    --sidebar-background: 0 0% 17%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 122 39% 49%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 122 39% 49%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 122 39% 49%;
+    --sidebar-ring: 122 39% 49%;
+    --sidebar-hover: 122 39% 49%;
 
-    /* Custom Colors */
+    /* Module Colors */
+    --module-config: 0 0% 46%;
+    --module-payins: 207 90% 54%;
+    --module-crypto: 36 100% 50%;
+    --module-treasury: 122 39% 49%;
+    --module-payouts: 291 64% 42%;
+    --module-whitelabel: 4 90% 58%;
+
+    /* Crypto Asset Colors */
     --crypto-btc: 43 96% 56%;
     --crypto-eth: 231 53% 55%;
-    --crypto-usdc: 217 91% 60%;
-    --glow-primary: 199 89% 48%;
-    
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(199, 89%, 48%) 0%, hsl(217, 91%, 60%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(160, 84%, 39%) 100%);
-    --gradient-card: linear-gradient(135deg, hsl(222, 47%, 10%) 0%, hsl(222, 47%, 8%) 100%);
+    --crypto-usdc: 207 90% 54%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Dark Mode - Paxos Theme */
+    --background: 0 0% 10%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 14%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 14%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Paxos Green Primary */
+    --primary: 122 39% 49%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 122 39% 49%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Success Green */
+    --success: 122 39% 49%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning Amber */
+    --warning: 36 100% 50%;
+    --warning-foreground: 0 0% 10%;
+
+    --destructive: 4 90% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 22%;
+    --input: 0 0% 18%;
+    --ring: 122 39% 49%;
+
+    /* Sidebar Dark Mode */
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 122 39% 49%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 122 39% 49%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 122 39% 49%;
+    --sidebar-ring: 122 39% 49%;
+    --sidebar-hover: 122 39% 49%;
   }
 }
 
@@ -88,7 +136,11 @@
 
 @layer utilities {
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply bg-card border border-border;
+  }
+
+  .glass-hover {
+    @apply hover:border-primary/50 transition-all duration-300;
   }
 
   .glow-primary {
@@ -100,26 +152,18 @@
   }
 
   .text-gradient {
-    background: var(--gradient-primary);
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(122, 39%, 30%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
-  .gradient-border {
-    position: relative;
-    background: hsl(var(--card));
-    border-radius: var(--radius);
+  .sidebar-item-selected {
+    @apply bg-primary/20 border-l-4 border-primary text-foreground;
   }
 
-  .gradient-border::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    background: var(--gradient-primary);
-    border-radius: calc(var(--radius) + 1px);
-    z-index: -1;
-    opacity: 0.5;
+  .sidebar-item-hover {
+    @apply hover:bg-primary/10;
   }
 
   .animate-pulse-slow {

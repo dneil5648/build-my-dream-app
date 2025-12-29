@@ -21,12 +21,12 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { name: 'Config', href: '/app/config', icon: Settings },
-  { name: 'Pay-ins', href: '/app/pay-ins', icon: ArrowDownToLine },
-  { name: 'Crypto Wallet', href: '/app/crypto', icon: Wallet },
-  { name: 'Treasury', href: '/app/treasury', icon: BarChart3 },
-  { name: 'Pay-outs', href: '/app/payouts', icon: ArrowUpFromLine },
-  { name: 'White Label', href: '/app/white-label', icon: Layers },
+  { name: 'Config', href: '/app/config', icon: Settings, color: 'module-config' },
+  { name: 'Pay-ins', href: '/app/pay-ins', icon: ArrowDownToLine, color: 'module-payins' },
+  { name: 'Crypto Wallet', href: '/app/crypto', icon: Wallet, color: 'module-crypto' },
+  { name: 'Treasury', href: '/app/treasury', icon: BarChart3, color: 'module-treasury' },
+  { name: 'Pay-outs', href: '/app/payouts', icon: ArrowUpFromLine, color: 'module-payouts' },
+  { name: 'White Label', href: '/app/white-label', icon: Layers, color: 'module-whitelabel' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
@@ -36,19 +36,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
   return (
     <aside 
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-sidebar-border transition-all duration-300",
+        "fixed left-0 top-0 z-40 h-screen bg-sidebar transition-all duration-300",
         collapsed ? "w-16" : "w-64"
       )}
     >
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-sidebar-border">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-primary/20">
           {!collapsed && (
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-bold text-sm">P</span>
               </div>
-              <span className="text-lg font-semibold text-foreground">Paxos</span>
+              <span className="text-lg font-semibold text-sidebar-foreground">Paxos</span>
             </div>
           )}
           {collapsed && (
@@ -71,13 +71,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
                   isActive 
-                    ? "bg-primary/10 text-primary glow-primary" 
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    ? "bg-primary/20 border-l-4 border-primary text-sidebar-foreground" 
+                    : "text-sidebar-foreground/70 hover:bg-primary/10 hover:text-sidebar-foreground border-l-4 border-transparent"
                 )}
               >
                 <Icon className={cn(
                   "h-5 w-5 flex-shrink-0",
-                  isActive && "text-primary"
+                  isActive ? "text-primary" : "text-primary"
                 )} />
                 {!collapsed && (
                   <span className="font-medium truncate">{item.name}</span>
@@ -87,17 +87,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           })}
         </nav>
 
+        {/* Divider */}
+        <div className="mx-4 border-t border-primary/20" />
+
         {/* Footer */}
-        <div className="p-2 border-t border-sidebar-border">
+        <div className="p-2">
           <Button
             variant="ghost"
             className={cn(
-              "w-full justify-start text-sidebar-foreground hover:text-destructive hover:bg-destructive/10",
+              "w-full justify-start text-sidebar-foreground/70 hover:text-destructive hover:bg-destructive/10",
               collapsed && "justify-center"
             )}
             onClick={logout}
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-5 w-5 text-destructive" />
             {!collapsed && <span className="ml-3">Logout</span>}
           </Button>
         </div>
@@ -105,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         {/* Toggle Button */}
         <button
           onClick={onToggle}
-          className="absolute -right-3 top-20 h-6 w-6 rounded-full bg-sidebar-accent border border-sidebar-border flex items-center justify-center text-sidebar-foreground hover:text-primary transition-colors"
+          className="absolute -right-3 top-20 h-6 w-6 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>

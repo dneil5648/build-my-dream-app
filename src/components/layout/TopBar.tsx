@@ -1,7 +1,8 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, User } from 'lucide-react';
+import { Bell, User, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,6 +25,7 @@ const routeTitles: Record<string, string> = {
 export const TopBar: React.FC = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const getTitle = () => {
     for (const [path, title] of Object.entries(routeTitles)) {
@@ -35,13 +37,23 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="flex h-full items-center justify-between px-6">
         {/* Title */}
         <h1 className="text-xl font-semibold text-foreground">{getTitle()}</h1>
 
         {/* Right Side */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          {/* Theme Toggle */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleTheme}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
+
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground">
             <Bell className="h-5 w-5" />
@@ -54,8 +66,8 @@ export const TopBar: React.FC = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
-                <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center">
-                  <User className="h-4 w-4" />
+                <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary" />
                 </div>
                 <span className="hidden md:inline-block">{user?.name}</span>
               </Button>
