@@ -68,6 +68,14 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        module: {
+          config: "hsl(var(--module-config))",
+          payins: "hsl(var(--module-payins))",
+          crypto: "hsl(var(--module-crypto))",
+          treasury: "hsl(var(--module-treasury))",
+          payouts: "hsl(var(--module-payouts))",
+          whitelabel: "hsl(var(--module-whitelabel))",
+        },
         crypto: {
           btc: "hsl(var(--crypto-btc))",
           eth: "hsl(var(--crypto-eth))",
