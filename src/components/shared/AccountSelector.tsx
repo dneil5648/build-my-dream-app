@@ -27,9 +27,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
   isLoading,
   label = 'Account',
 }) => {
-  const selectedAccount = accounts.find(
-    (a) => a.paxos_account_id === selectedAccountId || a.id === selectedAccountId
-  );
+  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
 
   return (
     <DropdownMenu>
@@ -59,9 +57,9 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
           accounts.map((account) => (
             <DropdownMenuItem
               key={account.id}
-              onClick={() => onSelectAccount(account.paxos_account_id)}
+              onClick={() => onSelectAccount(account.id)}
               className={`cursor-pointer ${
-                selectedAccountId === account.paxos_account_id ? 'bg-primary/10' : ''
+                selectedAccountId === account.id ? 'bg-primary/10' : ''
               }`}
             >
               <div className="flex items-center gap-2">

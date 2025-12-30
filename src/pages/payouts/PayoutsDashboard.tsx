@@ -49,7 +49,7 @@ const PayoutsDashboard: React.FC = () => {
   // Auto-select first account
   useEffect(() => {
     if (accounts.length > 0 && !selectedAccountId) {
-      setSelectedAccountId(accounts[0].paxos_account_id);
+      setSelectedAccountId(accounts[0].id);
     }
   }, [accounts, selectedAccountId]);
 
