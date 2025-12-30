@@ -49,7 +49,7 @@ const PayInsDashboard: React.FC = () => {
   const configuredIdentity = moduleConfig.payinsIdentityId 
     ? identities.find((i: PaxosIdentity) => i.identity_id === moduleConfig.payinsIdentityId)
     : null;
-  const institutionIdentity = configuredIdentity || identities.find((i: PaxosIdentity) => i.identity_type === 'INSTITUTION');
+  const institutionIdentity = configuredIdentity || identities.find((i: PaxosIdentity) => i.identity_type?.toUpperCase() === 'INSTITUTION');
   const needsOnboarding = !loadingIdentities && !institutionIdentity && (moduleConfig.requireOnboarding || !moduleConfig.payinsIdentityId);
 
   // Auto-select first account

@@ -43,7 +43,7 @@ const PayoutsDashboard: React.FC = () => {
   const configuredIdentity = moduleConfig.payoutsIdentityId 
     ? identities.find((i: PaxosIdentity) => i.identity_id === moduleConfig.payoutsIdentityId)
     : null;
-  const institutionIdentity = configuredIdentity || identities.find((i: PaxosIdentity) => i.identity_type === 'INSTITUTION');
+  const institutionIdentity = configuredIdentity || identities.find((i: PaxosIdentity) => i.identity_type?.toUpperCase() === 'INSTITUTION');
   const needsOnboarding = !loadingIdentities && !institutionIdentity && (moduleConfig.requireOnboarding || !moduleConfig.payoutsIdentityId);
 
   // Auto-select first account
