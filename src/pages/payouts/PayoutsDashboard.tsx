@@ -1,9 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpFromLine, Building2, Clock, Plus, CheckCircle2 } from 'lucide-react';
+import { ArrowUpFromLine, Building2, Clock, Plus, CheckCircle2, Users, Wallet, Loader2 } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
+import { AccountsTable } from '@/components/shared/AccountsTable';
+import { IdentitiesTable } from '@/components/shared/IdentitiesTable';
+import { OnboardingWizard } from '@/components/shared/OnboardingWizard';
+import { CreateAccountForm } from '@/components/shared/CreateAccountForm';
+import { AccountBalancesCard } from '@/components/shared/AccountBalancesCard';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
+import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
+import { CreateIdentityRequest, CreateAccountRequest } from '@/api/types';
+import { toast } from 'sonner';
 
 const mockBankAccounts = [
   { id: '1', name: 'Chase Business', network: 'WIRE', lastFour: '1234', status: 'verified' },
@@ -17,8 +29,50 @@ const mockPayouts = [
 ];
 
 const PayoutsDashboard: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showCreateAccount, setShowCreateAccount] = useState(false);
+
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
+  const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId);
+  const createIdentity = useCreateIdentity();
+  const createAccount = useCreateAccount();
+
+  const accounts = accountsResponse?.data || [];
+  const identities = identitiesResponse?.data || [];
+  const balances = balancesResponse?.data || [];
+
+  // Auto-select first account
+  React.useEffect(() => {
+    if (accounts.length > 0 && !selectedAccountId) {
+      setSelectedAccountId(accounts[0].paxos_account_id);
+    }
+  }, [accounts, selectedAccountId]);
+
+  const handleCreateIdentity = async (data: CreateIdentityRequest) => {
+    try {
+      await createIdentity.mutateAsync(data);
+      toast.success('Identity created successfully');
+      setShowOnboarding(false);
+    } catch (error) {
+      toast.error('Failed to create identity');
+    }
+  };
+
+  const handleCreateAccount = async (data: CreateAccountRequest) => {
+    try {
+      await createAccount.mutateAsync(data);
+      toast.success('Account created successfully');
+      setShowCreateAccount(false);
+    } catch (error) {
+      toast.error('Failed to create account');
+    }
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -41,103 +95,209 @@ const PayoutsDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Payouts"
-          value="$245,500"
-          change="+18.2% from last month"
-          changeType="positive"
-          icon={ArrowUpFromLine}
-        />
-        <StatCard
-          title="Pending"
-          value="$8,500"
-          change="1 in progress"
-          changeType="neutral"
-          icon={Clock}
-        />
-        <StatCard
-          title="Completed (30d)"
-          value="$237,000"
-          change="15 transactions"
-          changeType="positive"
-          icon={CheckCircle2}
-        />
-        <StatCard
-          title="Bank Accounts"
-          value="2"
-          change="All verified"
-          changeType="neutral"
-          icon={Building2}
-        />
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="bg-secondary">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="accounts">
+            <Wallet className="h-4 w-4 mr-2" />
+            Accounts
+          </TabsTrigger>
+          <TabsTrigger value="identities">
+            <Users className="h-4 w-4 mr-2" />
+            Identities
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Bank Accounts */}
-        <div className="glass rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-foreground">Registered Bank Accounts</h3>
-            <Link to="/app/payouts/bank-accounts/new" className="text-sm text-primary hover:underline">
-              Add New
-            </Link>
+        <TabsContent value="dashboard" className="space-y-6 mt-6">
+          {/* Stats */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Total Payouts"
+              value="$245,500"
+              change="+18.2% from last month"
+              changeType="positive"
+              icon={ArrowUpFromLine}
+            />
+            <StatCard
+              title="Pending"
+              value="$8,500"
+              change="1 in progress"
+              changeType="neutral"
+              icon={Clock}
+            />
+            <StatCard
+              title="Completed (30d)"
+              value="$237,000"
+              change="15 transactions"
+              changeType="positive"
+              icon={CheckCircle2}
+            />
+            <StatCard
+              title="Bank Accounts"
+              value="2"
+              change="All verified"
+              changeType="neutral"
+              icon={Building2}
+            />
           </div>
-          <div className="space-y-3">
-            {mockBankAccounts.map((account) => (
-              <div 
-                key={account.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{account.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {account.network} • ****{account.lastFour}
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success capitalize">
-                  {account.status}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Recent Payouts */}
-        <div className="glass rounded-xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-foreground">Recent Payouts</h3>
-            <Link to="/app/payouts/history" className="text-sm text-primary hover:underline">
-              View All
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {mockPayouts.map((payout) => (
-              <div 
-                key={payout.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
-                    <ArrowUpFromLine className="h-5 w-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{payout.amount}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {payout.bankAccount} • {payout.date}
-                    </p>
-                  </div>
-                </div>
-                <TransactionStatusBadge status={payout.status} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Bank Accounts */}
+            <div className="glass rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-semibold text-foreground">Registered Bank Accounts</h3>
+                <Link to="/app/payouts/bank-accounts/new" className="text-sm text-primary hover:underline">
+                  Add New
+                </Link>
               </div>
-            ))}
+              <div className="space-y-3">
+                {mockBankAccounts.map((account) => (
+                  <div 
+                    key={account.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Building2 className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{account.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {account.network} • ****{account.lastFour}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success capitalize">
+                      {account.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Payouts */}
+            <div className="glass rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-semibold text-foreground">Recent Payouts</h3>
+                <Link to="/app/payouts/history" className="text-sm text-primary hover:underline">
+                  View All
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {mockPayouts.map((payout) => (
+                  <div 
+                    key={payout.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
+                        <ArrowUpFromLine className="h-5 w-5 text-warning" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{payout.amount}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {payout.bankAccount} • {payout.date}
+                        </p>
+                      </div>
+                    </div>
+                    <TransactionStatusBadge status={payout.status} />
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="accounts" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Account List */}
+            <div className="lg:col-span-2 glass rounded-xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="font-semibold text-foreground">Accounts</h3>
+                  <p className="text-sm text-muted-foreground">Manage Paxos accounts</p>
+                </div>
+                <Button onClick={() => setShowCreateAccount(true)} className="bg-primary hover:bg-primary/90">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Account
+                </Button>
+              </div>
+              <AccountsTable accounts={accounts} isLoading={loadingAccounts} />
+            </div>
+
+            {/* Account Balances */}
+            <div className="glass rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-foreground">Account Balances</h3>
+              </div>
+              
+              {accounts.length > 0 && (
+                <div className="mb-4">
+                  <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((account) => (
+                        <SelectItem key={account.id} value={account.paxos_account_id}>
+                          {account.paxos_account_id.slice(0, 12)}...
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="identities" className="mt-6">
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-foreground">Identities</h3>
+                <p className="text-sm text-muted-foreground">Manage individuals and institutions</p>
+              </div>
+              <Button onClick={() => setShowOnboarding(true)} className="bg-primary hover:bg-primary/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Onboard New
+              </Button>
+            </div>
+            <IdentitiesTable identities={identities} isLoading={loadingIdentities} />
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Onboarding Dialog */}
+      <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
+        <DialogContent className="max-w-2xl bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Onboard New Identity</DialogTitle>
+          </DialogHeader>
+          <OnboardingWizard
+            onSubmit={handleCreateIdentity}
+            isLoading={createIdentity.isPending}
+            onCancel={() => setShowOnboarding(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Account Dialog */}
+      <Dialog open={showCreateAccount} onOpenChange={setShowCreateAccount}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Create Account</DialogTitle>
+          </DialogHeader>
+          <CreateAccountForm
+            identities={identities}
+            onSubmit={handleCreateAccount}
+            isLoading={createAccount.isPending}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
