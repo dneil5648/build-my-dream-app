@@ -79,7 +79,7 @@ export interface PaxosAddress {
 export interface TaxDetails {
   tax_payer_id: string;           // Tax ID (SSN, EIN, etc.)
   tax_payer_country: string;      // ISO 3166-1 Alpha-3 code
-  tin_verification_status?: 'VERIFIED' | 'PENDING' | 'FAILED';
+  tin_verification_status?: 'VERIFIED' | 'PENDING' | 'FAILED' | 'APPROVED';
 }
 
 // Customer Due Diligence
@@ -132,6 +132,7 @@ export interface PersonDetails {
   passthrough_verifier_type?: 'JUMIO' | 'ALLOY' | 'LEXISNEXIS' | 'MITEK' | 'SUMSUB' |
     'MICROBILT' | 'ONFIDO' | 'CUSTOMER' | 'EQUIFAX' | 'ID3_AUTHENTICATE' | 'FIS' | 'PROVE' | 'PERSONA' | 'PLAID';
   passthrough_verified_at?: string;  // RFC3339 format
+  passthrough_verification_status?: 'APPROVED' | 'PENDING' | 'REJECTED';
   id_verification_status?: 'APPROVED' | 'PENDING' | 'REJECTED';
 
   // Personal Information
