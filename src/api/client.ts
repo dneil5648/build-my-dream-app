@@ -44,24 +44,15 @@ const DEFAULT_BACKEND_URL = 'https://glossiest-junko-tangential.ngrok-free.dev';
 // Base API client
 class ApiClient {
   private getBaseUrl(): string {
-    const config = getApiConfig();
-
-    // If config has a baseUrl and it's not a localhost URL being used from a non-localhost site, use it
-    const configuredBaseUrl = config?.baseUrl?.trim();
     const isBrowser = typeof window !== 'undefined';
-    const isLocalSite = isBrowser && window.location.hostname === 'localhost';
-    const isConfiguredLocalhost = !!configuredBaseUrl && /^(http:\/\/localhost|https:\/\/localhost|http:\/\/127\.0\.0\.1|https:\/\/127\.0\.0\.1)/.test(configuredBaseUrl);
-
-    if (configuredBaseUrl && (!isConfiguredLocalhost || isLocalSite)) {
-      return configuredBaseUrl;
-    }
-
-    // In local development (localhost), use empty string to leverage Vite proxy
-    if (isLocalSite) {
+    const isLocalhost = isBrowser && window.location.hostname === 'localhost';
+    
+    // Only use Vite proxy (empty baseUrl) when running on localhost
+    if (isLocalhost) {
       return '';
     }
-
-    // Otherwise, use the default backend URL directly
+    
+    // For all other environments (preview, production), use the ngrok URL directly
     return DEFAULT_BACKEND_URL;
   }
 
