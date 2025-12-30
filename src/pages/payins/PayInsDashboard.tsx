@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, ArrowDownToLine, Clock, CheckCircle2, AlertCircle, Loader2, Building2, Wallet } from 'lucide-react';
+import { Plus, ArrowDownToLine, Clock, CheckCircle2, AlertCircle, Loader2, Building2, Wallet, UserPlus } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
 import { AccountSelector } from '@/components/shared/AccountSelector';
@@ -14,6 +14,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
 import { FiatDepositInstructions, Transaction, CreateIdentityRequest, CreateAccountRequest, PaxosIdentity } from '@/api/types';
+import { getModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
 
 const PayInsDashboard: React.FC = () => {
@@ -37,9 +38,13 @@ const PayInsDashboard: React.FC = () => {
   const identities = identitiesResponse?.data || [];
   const balances = balancesResponse?.data || [];
 
-  // Check if institution identity exists
-  const institutionIdentity = identities.find((i: PaxosIdentity) => i.identity_type === 'INSTITUTION');
-  const needsOnboarding = !loadingIdentities && !institutionIdentity;
+  // Get module config and check for institution identity
+  const moduleConfig = getModuleIdentityConfig();
+  const configuredIdentity = moduleConfig.payinsIdentityId 
+    ? identities.find((i: PaxosIdentity) => i.identity_id === moduleConfig.payinsIdentityId)
+    : null;
+  const institutionIdentity = configuredIdentity || identities.find((i: PaxosIdentity) => i.identity_type === 'INSTITUTION');
+  const needsOnboarding = !loadingIdentities && !institutionIdentity && (moduleConfig.requireOnboarding || !moduleConfig.payinsIdentityId);
 
   // Auto-select first account
   useEffect(() => {
@@ -47,13 +52,6 @@ const PayInsDashboard: React.FC = () => {
       setSelectedAccountId(accounts[0].paxos_account_id);
     }
   }, [accounts, selectedAccountId]);
-
-  // Show onboarding if needed
-  useEffect(() => {
-    if (needsOnboarding) {
-      setShowOnboarding(true);
-    }
-  }, [needsOnboarding]);
 
   // Calculate stats from real data
   const completedDeposits = transactions.filter((t: Transaction) => t.status === 'completed');
@@ -91,42 +89,27 @@ const PayInsDashboard: React.FC = () => {
     );
   }
 
-  // If no institution identity, show onboarding prompt
-  if (needsOnboarding && !showOnboarding) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center max-w-md">
-          <div className="h-16 w-16 rounded-full bg-module-payins/10 flex items-center justify-center mx-auto mb-4">
-            <Building2 className="h-8 w-8 text-module-payins" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Complete Business Registration</h2>
-          <p className="text-muted-foreground mb-6">
-            To use Pay-ins, you need to register your business first. This is a one-time setup.
-          </p>
-          <Button onClick={() => setShowOnboarding(true)} className="bg-module-payins hover:bg-module-payins/90">
-            Start Registration
-          </Button>
-        </div>
-
-        {/* Onboarding Dialog */}
-        <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
-            <DialogHeader>
-              <DialogTitle>Business Registration</DialogTitle>
-            </DialogHeader>
-            <InstitutionOnboardingWizard
-              onSubmit={handleCreateIdentity}
-              isLoading={createIdentity.isPending}
-              onCancel={() => setShowOnboarding(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
+      {/* Onboarding Banner - Non-blocking */}
+      {needsOnboarding && (
+        <div className="rounded-xl bg-gradient-to-r from-module-payins/10 via-module-payins/5 to-transparent border border-module-payins/30 p-4 flex items-center justify-between animate-fade-in">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-full bg-module-payins/20 flex items-center justify-center">
+              <UserPlus className="h-6 w-6 text-module-payins" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Complete Business Registration</h3>
+              <p className="text-sm text-muted-foreground">Register your business to create accounts and receive deposits</p>
+            </div>
+          </div>
+          <Button onClick={() => setShowOnboarding(true)} className="bg-module-payins hover:bg-module-payins/90">
+            <UserPlus className="h-4 w-4 mr-2" />
+            Onboard Now
+          </Button>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -138,14 +121,16 @@ const PayInsDashboard: React.FC = () => {
             accounts={accounts}
             selectedAccountId={selectedAccountId}
             onSelectAccount={setSelectedAccountId}
-            onCreateAccount={() => setShowCreateAccount(true)}
+            onCreateAccount={institutionIdentity ? () => setShowCreateAccount(true) : undefined}
             isLoading={loadingAccounts}
             label="Account"
           />
-          <Button onClick={() => setShowCreateAccount(true)} variant="outline" className="border-module-payins text-module-payins hover:bg-module-payins/10">
-            <Plus className="h-4 w-4 mr-2" />
-            New Account
-          </Button>
+          {institutionIdentity && (
+            <Button onClick={() => setShowCreateAccount(true)} variant="outline" className="border-module-payins text-module-payins hover:bg-module-payins/10">
+              <Plus className="h-4 w-4 mr-2" />
+              New Account
+            </Button>
+          )}
         </div>
       </div>
 
@@ -219,9 +204,11 @@ const PayInsDashboard: React.FC = () => {
           <div className="glass rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-foreground">Active Deposit Instructions</h3>
-              <Link to="/app/pay-ins/create" className="text-sm text-module-payins hover:underline">
-                Create New
-              </Link>
+              {institutionIdentity && (
+                <Link to="/app/pay-ins/create" className="text-sm text-module-payins hover:underline">
+                  Create New
+                </Link>
+              )}
             </div>
             
             {loadingInstructions ? (
@@ -232,9 +219,13 @@ const PayInsDashboard: React.FC = () => {
               <div className="text-center py-8 text-muted-foreground">
                 <ArrowDownToLine className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No deposit instructions found.</p>
-                <Link to="/app/pay-ins/create" className="text-module-payins hover:underline">
-                  Create your first instruction
-                </Link>
+                {institutionIdentity ? (
+                  <Link to="/app/pay-ins/create" className="text-module-payins hover:underline">
+                    Create your first instruction
+                  </Link>
+                ) : (
+                  <p className="text-sm">Complete business registration to get started</p>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
@@ -324,13 +315,17 @@ const PayInsDashboard: React.FC = () => {
               <div className="text-center py-8 text-muted-foreground">
                 <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No accounts yet</p>
-                <Button 
-                  onClick={() => setShowCreateAccount(true)} 
-                  variant="link" 
-                  className="text-module-payins"
-                >
-                  Create your first account
-                </Button>
+                {institutionIdentity ? (
+                  <Button 
+                    onClick={() => setShowCreateAccount(true)} 
+                    variant="link" 
+                    className="text-module-payins"
+                  >
+                    Create your first account
+                  </Button>
+                ) : (
+                  <p className="text-sm">Complete registration first</p>
+                )}
               </div>
             ) : (
               <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
@@ -339,8 +334,8 @@ const PayInsDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Onboarding Dialog */}
-      <Dialog open={showOnboarding} onOpenChange={(open) => !needsOnboarding && setShowOnboarding(open)}>
+      {/* Onboarding Dialog - Dismissible */}
+      <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
           <DialogHeader>
             <DialogTitle>Business Registration</DialogTitle>
@@ -348,7 +343,7 @@ const PayInsDashboard: React.FC = () => {
           <InstitutionOnboardingWizard
             onSubmit={handleCreateIdentity}
             isLoading={createIdentity.isPending}
-            onCancel={needsOnboarding ? undefined : () => setShowOnboarding(false)}
+            onCancel={() => setShowOnboarding(false)}
           />
         </DialogContent>
       </Dialog>
