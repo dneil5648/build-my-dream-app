@@ -1,41 +1,61 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowDownToLine } from 'lucide-react';
+import { ArrowLeft, ArrowDownToLine, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
+import { useAccounts } from '@/hooks/useAccounts';
+import { useSandboxDeposit } from '@/hooks/useFiat';
 
 const SandboxDeposit: React.FC = () => {
   const [formData, setFormData] = useState({
-    instruction: '',
+    account_id: '',
     amount: '',
     asset: 'USD',
-    bankAccount: '',
   });
   const [transaction, setTransaction] = useState<{
     id: string;
     amount: string;
     status: 'pending' | 'processing' | 'completed';
   } | null>(null);
-  const [loading, setLoading] = useState(false);
+
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const sandboxDeposit = useSandboxDeposit();
+  const accounts = accountsResponse?.data || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     
+    if (!formData.account_id || !formData.amount) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    // Show pending state
     setTransaction({ id: 'TXN-' + Date.now(), amount: formData.amount, status: 'pending' });
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setTransaction(prev => prev ? {...prev, status: 'processing'} : null);
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setTransaction(prev => prev ? {...prev, status: 'completed'} : null);
-    
-    setLoading(false);
-    toast.success('Sandbox deposit completed!');
+    try {
+      // Update to processing
+      setTimeout(() => {
+        setTransaction(prev => prev ? {...prev, status: 'processing'} : null);
+      }, 500);
+
+      await sandboxDeposit.mutateAsync({
+        account_id: formData.account_id,
+        amount: formData.amount,
+        asset: formData.asset,
+      });
+      
+      // Update to completed
+      setTransaction(prev => prev ? {...prev, status: 'completed'} : null);
+      toast.success('Sandbox deposit completed!');
+    } catch (error) {
+      setTransaction(null);
+      toast.error(error instanceof Error ? error.message : 'Failed to create sandbox deposit');
+    }
   };
 
   return (
@@ -62,14 +82,24 @@ const SandboxDeposit: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="glass rounded-xl p-8 space-y-6">
         <div className="space-y-2">
-          <Label>Deposit Instruction</Label>
-          <Select value={formData.instruction} onValueChange={(v) => setFormData({...formData, instruction: v})}>
+          <Label>Account</Label>
+          <Select 
+            value={formData.account_id} 
+            onValueChange={(v) => setFormData({...formData, account_id: v})}
+            disabled={loadingAccounts}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select deposit instruction" />
+              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="instr1">WIRE - ****1234 (PAX-001)</SelectItem>
-              <SelectItem value="instr2">ACH - ****5678 (PAX-002)</SelectItem>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.paxos_account_id}>
+                  Account {account.paxos_account_id.slice(0, 8)}...
+                </SelectItem>
+              ))}
+              {accounts.length === 0 && !loadingAccounts && (
+                <SelectItem value="" disabled>No accounts found</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -93,24 +123,29 @@ const SandboxDeposit: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="USD">USD</SelectItem>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="SGD">SGD</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>Mock Bank Account Number</Label>
-          <Input
-            placeholder="Enter mock bank account"
-            value={formData.bankAccount}
-            onChange={(e) => setFormData({...formData, bankAccount: e.target.value})}
-            className="bg-secondary border-border"
-          />
-        </div>
-
-        <Button type="submit" disabled={loading || !formData.amount} className="w-full bg-success hover:bg-success/90">
-          <ArrowDownToLine className="h-4 w-4 mr-2" />
-          {loading ? 'Processing...' : 'Simulate Deposit'}
+        <Button 
+          type="submit" 
+          disabled={sandboxDeposit.isPending || !formData.amount || !formData.account_id} 
+          className="w-full bg-success hover:bg-success/90"
+        >
+          {sandboxDeposit.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <ArrowDownToLine className="h-4 w-4 mr-2" />
+              Simulate Deposit
+            </>
+          )}
         </Button>
       </form>
 
@@ -121,7 +156,7 @@ const SandboxDeposit: React.FC = () => {
           <div className="flex items-center justify-between p-4 rounded-lg bg-secondary border border-border">
             <div>
               <p className="font-mono text-sm text-muted-foreground">{transaction.id}</p>
-              <p className="font-semibold text-foreground">${transaction.amount} USD</p>
+              <p className="font-semibold text-foreground">${transaction.amount} {formData.asset}</p>
             </div>
             <TransactionStatusBadge status={transaction.status} />
           </div>

@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { Settings, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings, CheckCircle, XCircle, RefreshCw, Server } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { getApiConfig, saveApiConfig, ApiConfig } from '@/api';
 
 const ConfigPage: React.FC = () => {
-  const [config, setConfig] = useState({
+  const [config, setConfig] = useState<ApiConfig>({
+    baseUrl: 'http://localhost:8080',
     clientId: '',
     clientSecret: '',
     customerId: '',
@@ -18,19 +20,59 @@ const ConfigPage: React.FC = () => {
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Load saved config on mount
+  useEffect(() => {
+    const savedConfig = getApiConfig();
+    if (savedConfig) {
+      setConfig(savedConfig);
+      setIsConnected(true);
+    }
+  }, []);
+
   const handleTestConnection = async () => {
     setTesting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsConnected(true);
-    setTesting(false);
-    toast.success('Connection successful!');
+    try {
+      // Test connection by making a simple request to the API
+      const response = await fetch(`${config.baseUrl}/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        setIsConnected(true);
+        toast.success('Connection successful!');
+      } else {
+        setIsConnected(false);
+        toast.error('Connection failed. Please check your settings.');
+      }
+    } catch (error) {
+      // If health endpoint doesn't exist, try a basic connection test
+      try {
+        await fetch(`${config.baseUrl}`, { method: 'HEAD', mode: 'no-cors' });
+        setIsConnected(true);
+        toast.success('Server is reachable. Save configuration to proceed.');
+      } catch {
+        setIsConnected(false);
+        toast.error('Unable to reach server. Please check the Base URL.');
+      }
+    } finally {
+      setTesting(false);
+    }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSaving(false);
-    toast.success('Configuration saved successfully');
+    try {
+      saveApiConfig(config);
+      setIsConnected(true);
+      toast.success('Configuration saved successfully');
+    } catch (error) {
+      toast.error('Failed to save configuration');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -53,17 +95,17 @@ const ConfigPage: React.FC = () => {
           </div>
           <div>
             <h3 className="font-semibold text-foreground">
-              {isConnected ? 'Connected to Paxos' : 'Not Connected'}
+              {isConnected ? 'Connected to API' : 'Not Connected'}
             </h3>
             <p className="text-sm text-muted-foreground">
-              {isConnected ? 'Your API credentials are valid' : 'Configure your credentials below'}
+              {isConnected ? 'Your API configuration is saved' : 'Configure your credentials below'}
             </p>
           </div>
         </div>
         <Button 
           variant="outline" 
           onClick={handleTestConnection}
-          disabled={testing || !config.clientId}
+          disabled={testing || !config.baseUrl}
           className="border-border"
         >
           {testing ? (
@@ -75,7 +117,53 @@ const ConfigPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Configuration Form */}
+      {/* Server Configuration */}
+      <div className="glass rounded-xl p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Server className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">Server Configuration</h3>
+            <p className="text-sm text-muted-foreground">Configure the API server endpoint</p>
+          </div>
+        </div>
+
+        <div className="grid gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="baseUrl">Base URL</Label>
+              <Input
+                id="baseUrl"
+                placeholder="http://localhost:8080"
+                value={config.baseUrl}
+                onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
+                className="bg-secondary border-border"
+              />
+              <p className="text-xs text-muted-foreground">
+                The base URL of your Paxos integration API server
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="environment">Environment</Label>
+              <Select 
+                value={config.environment} 
+                onValueChange={(value: 'sandbox' | 'production') => setConfig({ ...config, environment: value })}
+              >
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sandbox">Sandbox</SelectItem>
+                  <SelectItem value="production">Production</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* API Credentials */}
       <div className="glass rounded-xl p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -83,7 +171,7 @@ const ConfigPage: React.FC = () => {
           </div>
           <div>
             <h3 className="font-semibold text-foreground">API Credentials</h3>
-            <p className="text-sm text-muted-foreground">Enter your Paxos API credentials</p>
+            <p className="text-sm text-muted-foreground">Enter your Paxos API credentials (stored locally)</p>
           </div>
         </div>
 
@@ -124,34 +212,15 @@ const ConfigPage: React.FC = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="environment">Environment</Label>
-              <Select 
-                value={config.environment} 
-                onValueChange={(value) => setConfig({ ...config, environment: value })}
-              >
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sandbox">Sandbox</SelectItem>
-                  <SelectItem value="production">Production</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="scope">API Scope</Label>
+              <Input
+                id="scope"
+                placeholder="API scopes (space-separated)"
+                value={config.scope}
+                onChange={(e) => setConfig({ ...config, scope: e.target.value })}
+                className="bg-secondary border-border"
+              />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="scope">API Scope</Label>
-            <Input
-              id="scope"
-              placeholder="API scopes (space-separated)"
-              value={config.scope}
-              onChange={(e) => setConfig({ ...config, scope: e.target.value })}
-              className="bg-secondary border-border"
-            />
-            <p className="text-xs text-muted-foreground">
-              Define the API access scopes for your application
-            </p>
           </div>
         </div>
 
