@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import ConfigPage from "./pages/config/ConfigPage";
 import PayInsDashboard from "./pages/payins/PayInsDashboard";
 import CreateDepositInstructions from "./pages/payins/CreateDepositInstructions";
+import CreateCryptoAddress from "./pages/payins/CreateCryptoAddress";
 import SandboxDeposit from "./pages/payins/SandboxDeposit";
 import CryptoWallet from "./pages/crypto/CryptoWallet";
 import CryptoDeposit from "./pages/crypto/CryptoDeposit";
@@ -56,6 +57,7 @@ const App = () => (
                 <Route path="pay-ins" element={<PayInsDashboard />} />
                 <Route path="pay-ins/dashboard" element={<PayInsDashboard />} />
                 <Route path="pay-ins/create" element={<CreateDepositInstructions />} />
+                <Route path="pay-ins/crypto-address" element={<CreateCryptoAddress />} />
                 <Route path="pay-ins/sandbox" element={<SandboxDeposit />} />
                 <Route path="pay-ins/history" element={<PayInsDashboard />} />
                 
