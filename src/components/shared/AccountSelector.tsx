@@ -16,6 +16,7 @@ interface AccountSelectorProps {
   onSelectAccount: (accountId: string) => void;
   onCreateAccount?: () => void;
   isLoading?: boolean;
+  label?: string;
 }
 
 export const AccountSelector: React.FC<AccountSelectorProps> = ({
@@ -24,6 +25,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
   onSelectAccount,
   onCreateAccount,
   isLoading,
+  label = 'Account',
 }) => {
   const selectedAccount = accounts.find(
     (a) => a.paxos_account_id === selectedAccountId || a.id === selectedAccountId
