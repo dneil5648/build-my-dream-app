@@ -137,10 +137,10 @@ const CreatePayout: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               {fiatAccounts.map((account) => (
-                <SelectItem key={account.id} value={account.fiat_account_id}>
+                <SelectItem key={account.id} value={account.paxos_fiat_account_id}>
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
-                    {account.fiat_network_name || account.network} • {account.fiat_account_id.slice(0, 12)}...
+                    {account.network} • {account.paxos_fiat_account_id.slice(0, 12)}...
                   </div>
                 </SelectItem>
               ))}

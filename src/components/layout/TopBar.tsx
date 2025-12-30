@@ -69,13 +69,13 @@ export const TopBar: React.FC = () => {
                 <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
                   <User className="h-4 w-4 text-primary" />
                 </div>
-                <span className="hidden md:inline-block">{user?.name}</span>
+                <span className="hidden md:inline-block">{user?.user_name}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>{user?.email}</DropdownMenuItem>
+              <DropdownMenuItem>{user?.user_name}</DropdownMenuItem>
               <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="text-destructive">

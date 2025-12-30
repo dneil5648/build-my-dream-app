@@ -110,7 +110,7 @@ const TreasuryDashboard: React.FC = () => {
             <StatCard
               title="Total Accounts"
               value={loadingAccounts ? '...' : accounts.length.toString()}
-              change={accounts.filter(a => a.status === 'active').length + ' active'}
+              change={(accounts.filter(a => a.status === 'active').length || accounts.length) + ' active'}
               changeType="neutral"
               icon={Wallet}
             />
@@ -156,7 +156,7 @@ const TreasuryDashboard: React.FC = () => {
                           <p className="font-medium text-foreground text-sm">
                             {account.paxos_account_id.slice(0, 12)}...
                           </p>
-                          <p className="text-xs text-muted-foreground">{account.status}</p>
+                          <p className="text-xs text-muted-foreground">{account.status || 'active'}</p>
                         </div>
                       </div>
                     </div>
