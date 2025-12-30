@@ -1,42 +1,61 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Copy, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Copy, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useAccounts } from '@/hooks/useAccounts';
+import { useCreateDepositInstructions } from '@/hooks/useFiat';
+import { FiatNetwork, AccountType } from '@/api/types';
 
 const CreateDepositInstructions: React.FC = () => {
   const [formData, setFormData] = useState({
-    account: '',
-    network: '',
-    accountType: '',
-    sourceAsset: 'USD',
-    destAsset: 'USD',
+    account_id: '',
+    network: '' as FiatNetwork | '',
+    account_type: '' as AccountType | '',
+    source_asset: 'USD',
   });
   const [instructions, setInstructions] = useState<{
-    routingNumber: string;
-    accountNumber: string;
-    memoId: string;
-    bankName: string;
+    id: string;
+    deposit_instructions_id: string;
+    network: string;
+    account_type: string;
   } | null>(null);
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState('');
+
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const createInstructions = useCreateDepositInstructions();
+  const accounts = accountsResponse?.data || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    setInstructions({
-      routingNumber: '021000021',
-      accountNumber: '9876543210',
-      memoId: 'PAX-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
-      bankName: 'JPMorgan Chase Bank, N.A.',
-    });
-    setLoading(false);
-    toast.success('Deposit instructions created successfully');
+    if (!formData.account_id || !formData.network || !formData.account_type) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    try {
+      const response = await createInstructions.mutateAsync({
+        account_id: formData.account_id,
+        network: formData.network as FiatNetwork,
+        account_type: formData.account_type as AccountType,
+        source_asset: formData.source_asset,
+      });
+      
+      if (response.success && response.data) {
+        setInstructions({
+          id: response.data.id,
+          deposit_instructions_id: response.data.deposit_instructions_id,
+          network: response.data.network,
+          account_type: response.data.account_type,
+        });
+        toast.success('Deposit instructions created successfully');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create deposit instructions');
+    }
   };
 
   const copyToClipboard = (text: string, field: string) => {
@@ -66,26 +85,39 @@ const CreateDepositInstructions: React.FC = () => {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Account</Label>
-              <Select value={formData.account} onValueChange={(v) => setFormData({...formData, account: v})}>
+              <Select 
+                value={formData.account_id} 
+                onValueChange={(v) => setFormData({...formData, account_id: v})}
+                disabled={loadingAccounts}
+              >
                 <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Select account" />
+                  <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="main">Main Account ($50,000)</SelectItem>
-                  <SelectItem value="trading">Trading Account ($25,000)</SelectItem>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.paxos_account_id}>
+                      Account {account.paxos_account_id.slice(0, 8)}...
+                    </SelectItem>
+                  ))}
+                  {accounts.length === 0 && !loadingAccounts && (
+                    <SelectItem value="" disabled>No accounts found</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Network</Label>
-              <Select value={formData.network} onValueChange={(v) => setFormData({...formData, network: v})}>
+              <Select value={formData.network} onValueChange={(v) => setFormData({...formData, network: v as FiatNetwork})}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue placeholder="Select network" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="wire">WIRE</SelectItem>
-                  <SelectItem value="ach">ACH</SelectItem>
-                  <SelectItem value="sepa">SEPA</SelectItem>
+                  <SelectItem value="WIRE">WIRE</SelectItem>
+                  <SelectItem value="ACH">ACH</SelectItem>
+                  <SelectItem value="CBIT">CBIT</SelectItem>
+                  <SelectItem value="DBS_ACT">DBS ACT</SelectItem>
+                  <SelectItem value="CUBIX">CUBIX</SelectItem>
+                  <SelectItem value="SCB">SCB</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -94,32 +126,44 @@ const CreateDepositInstructions: React.FC = () => {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Account Type</Label>
-              <Select value={formData.accountType} onValueChange={(v) => setFormData({...formData, accountType: v})}>
+              <Select value={formData.account_type} onValueChange={(v) => setFormData({...formData, account_type: v as AccountType})}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="checking">Checking</SelectItem>
-                  <SelectItem value="savings">Savings</SelectItem>
+                  <SelectItem value="CHECKING">Checking</SelectItem>
+                  <SelectItem value="SAVINGS">Savings</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Source Asset</Label>
-              <Select value={formData.sourceAsset} onValueChange={(v) => setFormData({...formData, sourceAsset: v})}>
+              <Select value={formData.source_asset} onValueChange={(v) => setFormData({...formData, source_asset: v})}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD</SelectItem>
                   <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="SGD">SGD</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full bg-primary hover:bg-primary/90">
-            {loading ? 'Creating...' : 'Create Deposit Instructions'}
+          <Button 
+            type="submit" 
+            disabled={createInstructions.isPending} 
+            className="w-full bg-primary hover:bg-primary/90"
+          >
+            {createInstructions.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create Deposit Instructions'
+            )}
           </Button>
         </form>
       ) : (
@@ -129,15 +173,14 @@ const CreateDepositInstructions: React.FC = () => {
               <CheckCircle className="h-8 w-8 text-success" />
             </div>
             <h3 className="text-xl font-semibold text-foreground">Deposit Instructions Created</h3>
-            <p className="text-muted-foreground">Use the following details for your wire transfer</p>
+            <p className="text-muted-foreground">Use the following details for your transfer</p>
           </div>
 
           <div className="space-y-4">
             {[
-              { label: 'Bank Name', value: instructions.bankName, key: 'bank' },
-              { label: 'Routing Number', value: instructions.routingNumber, key: 'routing' },
-              { label: 'Account Number', value: instructions.accountNumber, key: 'account' },
-              { label: 'Memo/Reference ID', value: instructions.memoId, key: 'memo' },
+              { label: 'Instruction ID', value: instructions.deposit_instructions_id, key: 'id' },
+              { label: 'Network', value: instructions.network, key: 'network' },
+              { label: 'Account Type', value: instructions.account_type, key: 'type' },
             ].map((item) => (
               <div key={item.key} className="flex items-center justify-between p-4 rounded-lg bg-secondary border border-border">
                 <div>
