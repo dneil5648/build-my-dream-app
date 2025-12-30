@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
-import { User, Building2, ArrowRight, ArrowLeft, Loader2, Check, Shield, MapPin } from 'lucide-react';
+import { User, Building2, ArrowRight, ArrowLeft, Loader2, Check, Shield, MapPin, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateIdentityRequest, IdentityType, PaxosAddress } from '@/api/types';
-import { INDUSTRY_SECTORS, CIP_ID_TYPES, INSTITUTION_TYPES } from '@/lib/constants';
+import { 
+  INDUSTRY_SECTORS, 
+  CIP_ID_TYPES, 
+  INSTITUTION_TYPES,
+  ACCOUNT_PURPOSES,
+  EMPLOYMENT_STATUSES,
+  SOURCE_OF_WEALTH,
+  SOURCE_OF_FUNDS,
+} from '@/lib/constants';
 
 interface OnboardingWizardProps {
   onSubmit: (data: CreateIdentityRequest) => Promise<void>;
@@ -13,7 +21,7 @@ interface OnboardingWizardProps {
   onCancel?: () => void;
 }
 
-type Step = 'type' | 'details' | 'address' | 'review';
+type Step = 'type' | 'details' | 'address' | 'cdd' | 'review';
 
 const emptyAddress: PaxosAddress = {
   country: 'USA',
@@ -54,7 +62,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   // Address - required for both
   const [address, setAddress] = useState<PaxosAddress>(emptyAddress);
 
-  const steps: Step[] = ['type', 'details', 'address', 'review'];
+  // Customer Due Diligence - REQUIRED
+  const [purposeOfAccount, setPurposeOfAccount] = useState<string>('');
+  const [employmentStatus, setEmploymentStatus] = useState<string>('');
+  const [sourceOfWealth, setSourceOfWealth] = useState<string>('');
+  const [sourceOfFunds, setSourceOfFunds] = useState<string>('');
+
+  const steps: Step[] = ['type', 'details', 'address', 'cdd', 'review'];
   const currentStepIndex = steps.indexOf(step);
 
   const getStepLabel = (s: Step): string => {
@@ -62,6 +76,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       type: 'Type',
       details: 'Details',
       address: 'Address',
+      cdd: 'Due Diligence',
       review: 'Review',
     };
     return labels[s];
@@ -101,7 +116,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           address: address,
         },
         customer_due_diligence: {
-          purpose_of_account: 'INVESTMENT_TRADING',
+          purpose_of_account: purposeOfAccount as any,
+          employment_status: employmentStatus as any,
+          source_of_wealth: sourceOfWealth as any,
+          source_of_funds: sourceOfFunds as any,
         },
       };
       await onSubmit(data);
@@ -125,7 +143,8 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         institution_members: [],
         customer_due_diligence: {
           industry_sector: bizSubType,
-          purpose_of_account: 'INVESTMENT_TRADING',
+          purpose_of_account: purposeOfAccount as any,
+          source_of_funds: sourceOfFunds as any,
         },
       };
       await onSubmit(data);
@@ -146,6 +165,12 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       case 'address':
         // Address is required with all sub-fields except address2
         return !!(address.address1 && address.city && address.province && address.zip_code && address.country);
+      case 'cdd':
+        // CDD is mandatory
+        if (identityType === 'INDIVIDUAL') {
+          return !!(purposeOfAccount && employmentStatus && sourceOfWealth && sourceOfFunds);
+        }
+        return !!(purposeOfAccount && sourceOfFunds);
       case 'review':
         return true;
       default:
@@ -168,7 +193,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 }`}>
                   {index + 1 < currentStepIndex ? <Check className="h-4 w-4" /> : index + 1}
                 </div>
-                <span className={`ml-2 text-sm font-medium ${
+                <span className={`ml-2 text-sm font-medium hidden sm:inline ${
                   index + 1 <= currentStepIndex ? 'text-foreground' : 'text-muted-foreground'
                 }`}>
                   {getStepLabel(s)}
@@ -524,6 +549,89 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           </div>
         )}
 
+        {/* CUSTOMER DUE DILIGENCE */}
+        {step === 'cdd' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Customer Due Diligence</h3>
+                <p className="text-sm text-muted-foreground">Required compliance information</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Purpose of Account *</Label>
+              <Select value={purposeOfAccount} onValueChange={setPurposeOfAccount}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select purpose" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCOUNT_PURPOSES.map((purpose) => (
+                    <SelectItem key={purpose.value} value={purpose.value}>
+                      {purpose.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {identityType === 'INDIVIDUAL' && (
+              <div className="space-y-2">
+                <Label>Employment Status *</Label>
+                <Select value={employmentStatus} onValueChange={setEmploymentStatus}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select employment status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EMPLOYMENT_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {identityType === 'INDIVIDUAL' && (
+              <div className="space-y-2">
+                <Label>Source of Wealth *</Label>
+                <Select value={sourceOfWealth} onValueChange={setSourceOfWealth}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select source of wealth" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SOURCE_OF_WEALTH.map((source) => (
+                      <SelectItem key={source.value} value={source.value}>
+                        {source.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Source of Funds *</Label>
+              <Select value={sourceOfFunds} onValueChange={setSourceOfFunds}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select source of funds" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCE_OF_FUNDS.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
         {/* REVIEW */}
         {step === 'review' && (
           <div className="space-y-6">
@@ -594,6 +702,27 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   {address.city}, {address.province} {address.zip_code}<br />
                   {address.country}
                 </p>
+              </div>
+
+              <div className="rounded-lg border border-border p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <h4 className="font-medium text-foreground">Due Diligence</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Purpose:</span>
+                  <span className="text-foreground">{ACCOUNT_PURPOSES.find(p => p.value === purposeOfAccount)?.label}</span>
+                  {identityType === 'INDIVIDUAL' && (
+                    <>
+                      <span className="text-muted-foreground">Employment:</span>
+                      <span className="text-foreground">{EMPLOYMENT_STATUSES.find(e => e.value === employmentStatus)?.label}</span>
+                      <span className="text-muted-foreground">Source of Wealth:</span>
+                      <span className="text-foreground">{SOURCE_OF_WEALTH.find(s => s.value === sourceOfWealth)?.label}</span>
+                    </>
+                  )}
+                  <span className="text-muted-foreground">Source of Funds:</span>
+                  <span className="text-foreground">{SOURCE_OF_FUNDS.find(s => s.value === sourceOfFunds)?.label}</span>
+                </div>
               </div>
             </div>
           </div>

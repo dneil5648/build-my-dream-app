@@ -82,3 +82,75 @@ export const MEMBER_ROLES = [
   { value: 'MANAGEMENT_CONTROL_PERSON', label: 'Management Control Person' },
   { value: 'BENEFICIARY', label: 'Beneficiary' },
 ] as const;
+
+// Employment status options for CDD
+export const EMPLOYMENT_STATUSES = [
+  { value: 'FULL_TIME', label: 'Full-Time Employee' },
+  { value: 'PART_TIME', label: 'Part-Time Employee' },
+  { value: 'SELF_EMPLOYED', label: 'Self-Employed' },
+  { value: 'CONTRACTUAL', label: 'Contractor' },
+  { value: 'RETIRED', label: 'Retired' },
+  { value: 'STUDENT', label: 'Student' },
+  { value: 'UNEMPLOYED', label: 'Unemployed' },
+] as const;
+
+// Source of wealth options for CDD
+export const SOURCE_OF_WEALTH = [
+  { value: 'EMPLOYMENT_INCOME', label: 'Employment Income' },
+  { value: 'BUSINESS_OWNERSHIP_DIVIDENDS', label: 'Business Ownership/Dividends' },
+  { value: 'INVESTMENT_GAINS', label: 'Investment Gains' },
+  { value: 'INHERITANCE', label: 'Inheritance' },
+  { value: 'REAL_ESTATE', label: 'Real Estate' },
+  { value: 'OTHER_SOURCE_OF_WEALTH', label: 'Other' },
+] as const;
+
+// Source of funds options for CDD
+export const SOURCE_OF_FUNDS = [
+  { value: 'SALARY_DISBURSEMENT', label: 'Salary/Paycheck' },
+  { value: 'BUSINESS_DIVIDENDS_PROFITS', label: 'Business Profits/Dividends' },
+  { value: 'INVESTMENT_RETURNS', label: 'Investment Returns' },
+  { value: 'SAVINGS_ACCOUNT_WITHDRAWAL', label: 'Savings Withdrawal' },
+  { value: 'INHERITANCE_DISTRIBUTION', label: 'Inheritance Distribution' },
+  { value: 'PROPERTY_SALE', label: 'Property Sale' },
+  { value: 'LOAN_DISBURSEMENT', label: 'Loan Disbursement' },
+  { value: 'GOVERNMENT_BENEFITS', label: 'Government Benefits' },
+] as const;
+
+// Net worth ranges for CDD
+export const NET_WORTH_RANGES = [
+  { value: 'NET_WORTH_0_TO_100K', label: '$0 - $100,000' },
+  { value: 'NET_WORTH_100K_TO_500K', label: '$100,000 - $500,000' },
+  { value: 'NET_WORTH_500K_TO_1M', label: '$500,000 - $1,000,000' },
+  { value: 'NET_WORTH_1M_TO_2_5M', label: '$1M - $2.5M' },
+  { value: 'NET_WORTH_2_5M_TO_5M', label: '$2.5M - $5M' },
+  { value: 'NET_WORTH_5M_TO_7_5M', label: '$5M - $7.5M' },
+  { value: 'NET_WORTH_7_5M_TO_10M', label: '$7.5M - $10M' },
+  { value: 'NET_WORTH_10M_TO_25M', label: '$10M - $25M' },
+  { value: 'NET_WORTH_25M_TO_50M', label: '$25M - $50M' },
+  { value: 'NET_WORTH_OVER_50M', label: 'Over $50M' },
+] as const;
+
+// Yearly income ranges for CDD
+export const YEARLY_INCOME_RANGES = [
+  { value: 'INCOME_0_TO_50K', label: '$0 - $50,000' },
+  { value: 'INCOME_50K_TO_100K', label: '$50,000 - $100,000' },
+  { value: 'INCOME_100K_TO_250K', label: '$100,000 - $250,000' },
+  { value: 'INCOME_250K_TO_500K', label: '$250,000 - $500,000' },
+  { value: 'INCOME_500K_TO_750K', label: '$500,000 - $750,000' },
+  { value: 'INCOME_750K_TO_1M', label: '$750,000 - $1M' },
+  { value: 'INCOME_ABOVE_1M', label: 'Above $1M' },
+] as const;
+
+// Expected transfer value ranges for CDD
+export const EXPECTED_TRANSFER_VALUES = [
+  { value: 'TRANSFER_VALUE_0_TO_25K', label: '$0 - $25,000' },
+  { value: 'TRANSFER_VALUE_25K_TO_50K', label: '$25,000 - $50,000' },
+  { value: 'TRANSFER_VALUE_50K_TO_100K', label: '$50,000 - $100,000' },
+  { value: 'TRANSFER_VALUE_100K_TO_250K', label: '$100,000 - $250,000' },
+  { value: 'TRANSFER_VALUE_250K_TO_500K', label: '$250,000 - $500,000' },
+  { value: 'TRANSFER_VALUE_500K_TO_750K', label: '$500,000 - $750,000' },
+  { value: 'TRANSFER_VALUE_750K_TO_1M', label: '$750,000 - $1M' },
+  { value: 'TRANSFER_VALUE_1M_TO_2_5M', label: '$1M - $2.5M' },
+  { value: 'TRANSFER_VALUE_2_5M_TO_5M', label: '$2.5M - $5M' },
+  { value: 'TRANSFER_VALUE_ABOVE_5M', label: 'Above $5M' },
+] as const;
