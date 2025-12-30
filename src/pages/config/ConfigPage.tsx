@@ -464,14 +464,16 @@ const ConfigPage: React.FC = () => {
                         Require new registration
                       </span>
                     </SelectItem>
-                    {institutionIdentities.map((identity) => (
-                      <SelectItem key={identity.identity_id} value={identity.identity_id}>
-                        <span className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          {identity.name}
-                        </span>
-                      </SelectItem>
-                    ))}
+                    {institutionIdentities
+                      .filter((identity) => identity.identity_id && identity.identity_id.trim() !== '')
+                      .map((identity) => (
+                        <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                          <span className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            {identity.name}
+                          </span>
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
@@ -515,14 +517,16 @@ const ConfigPage: React.FC = () => {
                         Require new registration
                       </span>
                     </SelectItem>
-                    {institutionIdentities.map((identity) => (
-                      <SelectItem key={identity.identity_id} value={identity.identity_id}>
-                        <span className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          {identity.name}
-                        </span>
-                      </SelectItem>
-                    ))}
+                    {institutionIdentities
+                      .filter((identity) => identity.identity_id && identity.identity_id.trim() !== '')
+                      .map((identity) => (
+                        <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                          <span className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4" />
+                            {identity.name}
+                          </span>
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
