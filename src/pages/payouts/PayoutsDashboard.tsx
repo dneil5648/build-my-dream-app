@@ -53,13 +53,19 @@ const PayoutsDashboard: React.FC = () => {
     }
   }, [accounts, selectedAccountId]);
 
-  const handleCreateIdentity = async (data: CreateIdentityRequest) => {
+  const handleCreateIdentity = async (data: CreateIdentityRequest): Promise<PaxosIdentity | void> => {
     try {
-      await createIdentity.mutateAsync(data);
-      toast.success('Business registered successfully');
-      setShowOnboarding(false);
+      const result = await createIdentity.mutateAsync(data);
+      // Return the identity for chaining (person -> institution)
+      // Only show success and close dialog for institution identity
+      if (data.institution_details) {
+        toast.success('Business registered successfully');
+        setShowOnboarding(false);
+      }
+      return result?.data as PaxosIdentity;
     } catch (error) {
       toast.error('Failed to register business');
+      throw error; // Re-throw to stop the chain
     }
   };
 
