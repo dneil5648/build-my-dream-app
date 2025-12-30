@@ -28,7 +28,7 @@ const TreasuryWithdraw: React.FC = () => {
   const withdrawAssets = useWithdrawAssets();
 
   const accounts = accountsResponse?.data || [];
-  const balances = balancesResponse?.data || [];
+  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
 
   const handleCalculateFee = async () => {
     if (!formData.account || !formData.asset || !formData.network || !formData.amount || !formData.destination) {

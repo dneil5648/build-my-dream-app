@@ -26,7 +26,7 @@ const CryptoWallet: React.FC = () => {
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
-  const balances = balancesResponse?.data || [];
+  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
   const transactions = (transactionsResponse?.data || []).filter(
     (tx: Transaction) => tx.type === 'deposit' || tx.type === 'withdrawal'
   );

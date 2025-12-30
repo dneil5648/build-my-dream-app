@@ -27,7 +27,7 @@ const WhiteLabelWallet: React.FC = () => {
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
-  const balances = balancesResponse?.data || [];
+  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
   const recentActivity = transactionsResponse?.data || [];
 
   // Load white label config
