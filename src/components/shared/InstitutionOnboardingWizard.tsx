@@ -114,6 +114,16 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
     const moduleConfig = getModuleIdentityConfig();
     const idvVendor = moduleConfig.idvVendor;
 
+    // Helper to validate SSN format (XXX-XX-XXXX or XXXXXXXXX)
+    const isValidSsn = (ssn: string) => /^\d{3}-?\d{2}-?\d{4}$/.test(ssn);
+    
+    // Only include cip_id if it's valid for the selected type
+    const shouldIncludeRepCipId = () => {
+      if (!repCipId) return false;
+      if (repCipIdType === 'SSN' && !isValidSsn(repCipId)) return false;
+      return true;
+    };
+
     // Create representative identity first
     const representativeData: CreateIdentityRequest = {
       person_details: {
@@ -124,9 +134,9 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         email: repEmail || undefined,
         phone_number: repPhone || undefined,
         date_of_birth: repDateOfBirth || undefined,
-        cip_id: repCipId || undefined,
-        cip_id_type: repCipId ? repCipIdType as any : undefined,
-        cip_id_country: repCipId ? repNationality : undefined,
+        cip_id: shouldIncludeRepCipId() ? repCipId : undefined,
+        cip_id_type: shouldIncludeRepCipId() ? repCipIdType as any : undefined,
+        cip_id_country: shouldIncludeRepCipId() ? repNationality : undefined,
         nationality: repNationality || undefined,
         address: repAddress,
       },
@@ -155,6 +165,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         cip_id_country: 'USA',
         govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : '',
         business_address: bizAddress,
+        incorporation_address: bizAddress, // Required by API
         regulation_status: bizRegulationStatus as any,
         trading_type: bizTradingType as any,
       },
