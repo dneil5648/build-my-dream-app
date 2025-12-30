@@ -232,6 +232,7 @@ const WhiteLabelWallet: React.FC = () => {
             existingIdentities={identities}
             isLoading={createIdentity.isPending || createAccount.isPending}
             onCancel={() => setShowOnboarding(false)}
+            module="WHITE_LABEL"
           />
         </DialogContent>
       </Dialog>

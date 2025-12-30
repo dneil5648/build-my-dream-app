@@ -58,7 +58,7 @@ const PayoutsDashboard: React.FC = () => {
       const result = await createIdentity.mutateAsync(data);
       // Return the identity for chaining (person -> institution)
       // Only show success and close dialog for institution identity
-      if (data.institution_details) {
+      if (data.identity_request.institution_details) {
         toast.success('Business registered successfully');
         setShowOnboarding(false);
       }
@@ -339,6 +339,7 @@ const PayoutsDashboard: React.FC = () => {
             onSubmit={handleCreateIdentity}
             isLoading={createIdentity.isPending}
             onCancel={() => setShowOnboarding(false)}
+            module="PAY_OUTS"
           />
         </DialogContent>
       </Dialog>
@@ -353,6 +354,7 @@ const PayoutsDashboard: React.FC = () => {
             identities={identities}
             onSubmit={handleCreateAccount}
             isLoading={createAccount.isPending}
+            module="PAY_OUTS"
           />
         </DialogContent>
       </Dialog>

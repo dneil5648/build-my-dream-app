@@ -206,6 +206,7 @@ const CryptoWallet: React.FC = () => {
             existingIdentities={identities}
             isLoading={createIdentity.isPending || createAccount.isPending}
             onCancel={() => setShowOnboarding(false)}
+            module="CRYPTO_WALLET"
           />
         </DialogContent>
       </Dialog>

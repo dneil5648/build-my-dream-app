@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CreateIdentityRequest, CreateAccountRequest, PaxosAddress, PaxosIdentity } from '@/api/types';
+import { CreateIdentityRequest, CreateAccountRequest, PaxosAddress, PaxosIdentity, ModuleName } from '@/api/types';
 import { 
   INDUSTRY_SECTORS, 
   CIP_ID_TYPES, 
@@ -22,6 +22,7 @@ interface WalletOnboardingWizardProps {
   existingIdentities?: PaxosIdentity[];
   isLoading?: boolean;
   onCancel?: () => void;
+  module?: ModuleName;
 }
 
 type WalletType = 'personal' | 'business';
@@ -42,6 +43,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
   existingIdentities = [],
   isLoading,
   onCancel,
+  module = 'WHITE_LABEL',
 }) => {
   const [walletType, setWalletType] = useState<WalletType | null>(null);
   const [step, setStep] = useState<Step>('wallet-type');
@@ -146,33 +148,36 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
           identityIdForWallet = selectedExistingId;
         } else {
           const individualData: CreateIdentityRequest = {
-            person_details: {
-              verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
-              passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
-              passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
-              passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
-              first_name: firstName || undefined,
-              last_name: lastName,
-              email: email || undefined,
-              phone_number: phone || undefined,
-              date_of_birth: dateOfBirth || undefined,
-              cip_id: shouldIncludeCipId() ? cipId : undefined,
-              cip_id_type: shouldIncludeCipId() ? cipIdType as any : undefined,
-              cip_id_country: shouldIncludeCipId() ? nationality : undefined,
-              nationality: nationality || undefined,
-              address: individualAddress,
+            identity_request: {
+              person_details: {
+                verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
+                passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
+                passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
+                passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
+                first_name: firstName || undefined,
+                last_name: lastName,
+                email: email || undefined,
+                phone_number: phone || undefined,
+                date_of_birth: dateOfBirth || undefined,
+                cip_id: shouldIncludeCipId() ? cipId : undefined,
+                cip_id_type: shouldIncludeCipId() ? cipIdType as any : undefined,
+                cip_id_country: shouldIncludeCipId() ? nationality : undefined,
+                nationality: nationality || undefined,
+                address: individualAddress,
+              },
+              tax_details: shouldIncludeCipId() ? [{
+                tax_payer_id: cipId,
+                tax_payer_country: nationality,
+                tin_verification_status: 'APPROVED',
+              }] : undefined,
+              customer_due_diligence: {
+                purpose_of_account: purposeOfAccount as any,
+                employment_status: employmentStatus as any,
+                source_of_wealth: sourceOfWealth as any,
+                source_of_funds: sourceOfFunds as any,
+              },
             },
-            tax_details: shouldIncludeCipId() ? [{
-              tax_payer_id: cipId,
-              tax_payer_country: nationality,
-              tin_verification_status: 'APPROVED',
-            }] : undefined,
-            customer_due_diligence: {
-              purpose_of_account: purposeOfAccount as any,
-              employment_status: employmentStatus as any,
-              source_of_wealth: sourceOfWealth as any,
-              source_of_funds: sourceOfFunds as any,
-            },
+            module,
           };
           const result = await onCreateIdentity(individualData);
           identityIdForWallet = (result as PaxosIdentity)?.identity_id;
@@ -184,70 +189,79 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
 
         if (!useExistingIndividual) {
           const individualData: CreateIdentityRequest = {
-            person_details: {
-              verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
-              passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
-              passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
-              passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
-              first_name: firstName || undefined,
-              last_name: lastName,
-              email: email || undefined,
-              phone_number: phone || undefined,
-              date_of_birth: dateOfBirth || undefined,
-              cip_id: shouldIncludeCipId() ? cipId : undefined,
-              cip_id_type: shouldIncludeCipId() ? cipIdType as any : undefined,
-              cip_id_country: shouldIncludeCipId() ? nationality : undefined,
-              nationality: nationality || undefined,
-              address: individualAddress,
+            identity_request: {
+              person_details: {
+                verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
+                passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
+                passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
+                passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
+                first_name: firstName || undefined,
+                last_name: lastName,
+                email: email || undefined,
+                phone_number: phone || undefined,
+                date_of_birth: dateOfBirth || undefined,
+                cip_id: shouldIncludeCipId() ? cipId : undefined,
+                cip_id_type: shouldIncludeCipId() ? cipIdType as any : undefined,
+                cip_id_country: shouldIncludeCipId() ? nationality : undefined,
+                nationality: nationality || undefined,
+                address: individualAddress,
+              },
+              tax_details: shouldIncludeCipId() ? [{
+                tax_payer_id: cipId,
+                tax_payer_country: nationality,
+                tin_verification_status: 'APPROVED',
+              }] : undefined,
+              customer_due_diligence: {
+                purpose_of_account: purposeOfAccount as any,
+                employment_status: employmentStatus as any,
+                source_of_wealth: sourceOfWealth as any,
+                source_of_funds: sourceOfFunds as any,
+              },
             },
-            tax_details: shouldIncludeCipId() ? [{
-              tax_payer_id: cipId,
-              tax_payer_country: nationality,
-              tin_verification_status: 'APPROVED',
-            }] : undefined,
-            customer_due_diligence: {
-              purpose_of_account: purposeOfAccount as any,
-              employment_status: employmentStatus as any,
-              source_of_wealth: sourceOfWealth as any,
-              source_of_funds: sourceOfFunds as any,
-            },
+            module,
           };
           const individualResult = await onCreateIdentity(individualData);
           individualId = (individualResult as PaxosIdentity)?.identity_id || '';
         }
 
         const institutionData: CreateIdentityRequest = {
-          institution_details: {
-            name: bizName,
-            email: bizEmail,
-            phone_number: bizPhone,
-            institution_type: bizType as any,
-            institution_sub_type: bizSubType,
-            cip_id: bizCipId,
-            cip_id_type: 'EIN',
-            cip_id_country: 'USA',
-            govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : new Date().toISOString(),
-            business_address: bizAddress,
-            incorporation_address: bizAddress, // Required by API
-            regulation_status: 'NON_REGULATED',
-            trading_type: 'PRIVATE',
+          identity_request: {
+            institution_details: {
+              name: bizName,
+              email: bizEmail,
+              phone_number: bizPhone,
+              institution_type: bizType as any,
+              institution_sub_type: bizSubType,
+              cip_id: bizCipId,
+              cip_id_type: 'EIN',
+              cip_id_country: 'USA',
+              govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : new Date().toISOString(),
+              business_address: bizAddress,
+              incorporation_address: bizAddress, // Required by API
+              regulation_status: 'NON_REGULATED',
+              trading_type: 'PRIVATE',
+            },
+            institution_members: individualId ? [{
+              identity_id: individualId,
+              roles: ['ACCOUNT_OPENER', 'BENEFICIAL_OWNER'],
+            }] : [],
+            customer_due_diligence: {
+              industry_sector: bizSubType,
+              purpose_of_account: bizPurpose as any,
+              source_of_funds: bizSourceOfFunds as any,
+            },
           },
-          institution_members: individualId ? [{
-            identity_id: individualId,
-            roles: ['ACCOUNT_OPENER', 'BENEFICIAL_OWNER'],
-          }] : [],
-          customer_due_diligence: {
-            industry_sector: bizSubType,
-            purpose_of_account: bizPurpose as any,
-            source_of_funds: bizSourceOfFunds as any,
-          },
+          module,
         };
         const institutionResult = await onCreateIdentity(institutionData);
         identityIdForWallet = (institutionResult as PaxosIdentity)?.identity_id;
       }
 
       await onCreateWallet({
-        identity_id: identityIdForWallet || '',
+        account_request: {
+          identity_id: identityIdForWallet || '',
+        },
+        module,
       });
     } catch (error) {
       throw error;
