@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Building2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { PaxosIdentity, CreateAccountRequest } from '@/api/types';
 
 interface CreateAccountFormProps {
@@ -18,7 +19,7 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
   isLoading,
 }) => {
   const [identityId, setIdentityId] = useState('');
-  const [createProfile, setCreateProfile] = useState(true);
+  const [description, setDescription] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +28,7 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
 
     await onSubmit({
       identity_id: identityId,
-      create_profile: createProfile,
+      description: description || undefined,
     });
   };
 
@@ -62,18 +63,18 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
         )}
       </div>
 
-      <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border">
-        <div>
-          <Label htmlFor="create-profile">Create Profile</Label>
-          <p className="text-sm text-muted-foreground">
-            Automatically create a Paxos profile for this account
-          </p>
-        </div>
-        <Switch
-          id="create-profile"
-          checked={createProfile}
-          onCheckedChange={setCreateProfile}
+      <div className="space-y-2">
+        <Label>Description</Label>
+        <Textarea
+          placeholder="Enter account description (optional)"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="bg-secondary border-border resize-none"
+          rows={3}
         />
+        <p className="text-xs text-muted-foreground">
+          A brief description to help identify this account
+        </p>
       </div>
 
       <Button 
