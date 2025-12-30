@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Building2, ArrowRight, ArrowLeft, Loader2, Check, DollarSign, Shield, MapPin } from 'lucide-react';
+import { User, Building2, ArrowRight, ArrowLeft, Loader2, Check, DollarSign, Shield, MapPin, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,10 @@ import {
   INSTITUTION_TYPES, 
   REGULATION_STATUSES, 
   TRADING_TYPES,
-  ACCOUNT_PURPOSES 
+  ACCOUNT_PURPOSES,
+  EMPLOYMENT_STATUSES,
+  SOURCE_OF_WEALTH,
+  SOURCE_OF_FUNDS,
 } from '@/lib/constants';
 
 interface InstitutionOnboardingWizardProps {
@@ -21,7 +24,7 @@ interface InstitutionOnboardingWizardProps {
   onCancel?: () => void;
 }
 
-type Step = 'rep-info' | 'rep-address' | 'biz-info' | 'biz-address' | 'biz-details' | 'review';
+type Step = 'rep-info' | 'rep-address' | 'rep-cdd' | 'biz-info' | 'biz-address' | 'biz-details' | 'review';
 
 const emptyAddress: PaxosAddress = {
   country: 'USA',
@@ -50,6 +53,12 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
   const [repNationality, setRepNationality] = useState('USA');
   const [repAddress, setRepAddress] = useState<PaxosAddress>(emptyAddress);
 
+  // Representative CDD - REQUIRED
+  const [repPurposeOfAccount, setRepPurposeOfAccount] = useState<string>('');
+  const [repEmploymentStatus, setRepEmploymentStatus] = useState<string>('');
+  const [repSourceOfWealth, setRepSourceOfWealth] = useState<string>('');
+  const [repSourceOfFunds, setRepSourceOfFunds] = useState<string>('');
+
   // Business Fields - all required per API
   const [bizName, setBizName] = useState('');
   const [bizDBA, setBizDBA] = useState('');
@@ -66,15 +75,17 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
   const [bizRegulationStatus, setBizRegulationStatus] = useState<string>('NON_REGULATED');
   const [bizTradingType, setBizTradingType] = useState<string>('PRIVATE');
   const [bizIndustrySector, setBizIndustrySector] = useState('');
-  const [bizPurpose, setBizPurpose] = useState('INVESTMENT_TRADING');
+  const [bizPurpose, setBizPurpose] = useState('');
+  const [bizSourceOfFunds, setBizSourceOfFunds] = useState('');
 
-  const steps: Step[] = ['rep-info', 'rep-address', 'biz-info', 'biz-address', 'biz-details', 'review'];
+  const steps: Step[] = ['rep-info', 'rep-address', 'rep-cdd', 'biz-info', 'biz-address', 'biz-details', 'review'];
   const currentStepIndex = steps.indexOf(step);
 
   const getStepLabel = (s: Step): string => {
     const labels: Record<Step, string> = {
-      'rep-info': 'Representative',
+      'rep-info': 'Rep Info',
       'rep-address': 'Rep Address',
+      'rep-cdd': 'Rep CDD',
       'biz-info': 'Business',
       'biz-address': 'Biz Address',
       'biz-details': 'Details',
@@ -114,7 +125,10 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         address: repAddress,
       },
       customer_due_diligence: {
-        purpose_of_account: 'INVESTMENT_TRADING',
+        purpose_of_account: repPurposeOfAccount as any,
+        employment_status: repEmploymentStatus as any,
+        source_of_wealth: repSourceOfWealth as any,
+        source_of_funds: repSourceOfFunds as any,
       },
     };
 
@@ -142,6 +156,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
       customer_due_diligence: {
         industry_sector: bizIndustrySector || bizSubType,
         purpose_of_account: bizPurpose as any,
+        source_of_funds: bizSourceOfFunds as any,
       },
     };
 
@@ -155,14 +170,17 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         return !!repLastName;
       case 'rep-address':
         return !!(repAddress.address1 && repAddress.city && repAddress.province && repAddress.zip_code && repAddress.country);
+      case 'rep-cdd':
+        // CDD is mandatory for representative
+        return !!(repPurposeOfAccount && repEmploymentStatus && repSourceOfWealth && repSourceOfFunds);
       case 'biz-info':
         // All institution fields required per API
         return !!(bizName && bizEmail && bizPhone && bizType && bizSubType && bizCipId && bizGovtRegDate);
       case 'biz-address':
         return !!(bizAddress.address1 && bizAddress.city && bizAddress.province && bizAddress.zip_code && bizAddress.country);
       case 'biz-details':
-        // Industry sector required for institutions
-        return !!(bizIndustrySector || bizSubType);
+        // Industry sector and CDD required for institutions
+        return !!((bizIndustrySector || bizSubType) && bizPurpose && bizSourceOfFunds);
       case 'review':
         return true;
       default:
@@ -385,6 +403,85 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
           </div>
         )}
 
+        {/* REPRESENTATIVE CDD */}
+        {step === 'rep-cdd' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Representative Due Diligence</h3>
+                <p className="text-sm text-muted-foreground">Required compliance information for the representative</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Purpose of Account *</Label>
+              <Select value={repPurposeOfAccount} onValueChange={setRepPurposeOfAccount}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select purpose" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCOUNT_PURPOSES.map((purpose) => (
+                    <SelectItem key={purpose.value} value={purpose.value}>
+                      {purpose.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Employment Status *</Label>
+              <Select value={repEmploymentStatus} onValueChange={setRepEmploymentStatus}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select employment status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMPLOYMENT_STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Source of Wealth *</Label>
+              <Select value={repSourceOfWealth} onValueChange={setRepSourceOfWealth}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select source of wealth" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCE_OF_WEALTH.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Source of Funds *</Label>
+              <Select value={repSourceOfFunds} onValueChange={setRepSourceOfFunds}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select source of funds" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCE_OF_FUNDS.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
         {/* BUSINESS INFO */}
         {step === 'biz-info' && (
           <div className="space-y-6">
@@ -597,8 +694,8 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                 <DollarSign className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-foreground">Business Details</h3>
-                <p className="text-sm text-muted-foreground">Regulatory and financial information</p>
+                <h3 className="text-lg font-semibold text-foreground">Business Details & Due Diligence</h3>
+                <p className="text-sm text-muted-foreground">Regulatory and compliance information</p>
               </div>
             </div>
 
@@ -651,20 +748,45 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Purpose of Account</Label>
-              <Select value={bizPurpose} onValueChange={setBizPurpose}>
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCOUNT_PURPOSES.map((purpose) => (
-                    <SelectItem key={purpose.value} value={purpose.value}>
-                      {purpose.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="pt-4 border-t border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground">Business Due Diligence *</span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Purpose of Account *</Label>
+                  <Select value={bizPurpose} onValueChange={setBizPurpose}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select purpose" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACCOUNT_PURPOSES.map((purpose) => (
+                        <SelectItem key={purpose.value} value={purpose.value}>
+                          {purpose.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Source of Funds *</Label>
+                  <Select value={bizSourceOfFunds} onValueChange={setBizSourceOfFunds}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select source of funds" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SOURCE_OF_FUNDS.map((source) => (
+                        <SelectItem key={source.value} value={source.value}>
+                          {source.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -697,18 +819,8 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                       <span className="text-foreground">{repEmail}</span>
                     </>
                   )}
-                  {repPhone && (
-                    <>
-                      <span className="text-muted-foreground">Phone:</span>
-                      <span className="text-foreground">{repPhone}</span>
-                    </>
-                  )}
-                  {repCipId && (
-                    <>
-                      <span className="text-muted-foreground">ID Type:</span>
-                      <span className="text-foreground">{CIP_ID_TYPES.find(t => t.value === repCipIdType)?.label}</span>
-                    </>
-                  )}
+                  <span className="text-muted-foreground">Employment:</span>
+                  <span className="text-foreground">{EMPLOYMENT_STATUSES.find(e => e.value === repEmploymentStatus)?.label}</span>
                 </div>
               </div>
 
@@ -724,12 +836,8 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                   <span className="text-foreground">{INSTITUTION_TYPES.find(t => t.value === bizType)?.label}</span>
                   <span className="text-muted-foreground">Industry:</span>
                   <span className="text-foreground">{INDUSTRY_SECTORS.find(s => s.value === bizSubType)?.label}</span>
-                  <span className="text-muted-foreground">Email:</span>
-                  <span className="text-foreground">{bizEmail}</span>
-                  <span className="text-muted-foreground col-span-2 pt-2">Address:</span>
-                  <span className="text-foreground col-span-2">
-                    {bizAddress.address1}, {bizAddress.city}, {bizAddress.province} {bizAddress.zip_code}
-                  </span>
+                  <span className="text-muted-foreground">Purpose:</span>
+                  <span className="text-foreground">{ACCOUNT_PURPOSES.find(p => p.value === bizPurpose)?.label}</span>
                 </div>
               </div>
 

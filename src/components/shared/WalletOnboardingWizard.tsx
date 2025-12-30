@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
-import { User, Building2, ArrowRight, ArrowLeft, Loader2, Check, Wallet, Plus, Shield, MapPin } from 'lucide-react';
+import { User, Building2, ArrowRight, ArrowLeft, Loader2, Check, Wallet, Plus, Shield, MapPin, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateIdentityRequest, CreateAccountRequest, PaxosAddress, PaxosIdentity } from '@/api/types';
-import { INDUSTRY_SECTORS, CIP_ID_TYPES, INSTITUTION_TYPES } from '@/lib/constants';
+import { 
+  INDUSTRY_SECTORS, 
+  CIP_ID_TYPES, 
+  INSTITUTION_TYPES,
+  ACCOUNT_PURPOSES,
+  EMPLOYMENT_STATUSES,
+  SOURCE_OF_WEALTH,
+  SOURCE_OF_FUNDS,
+} from '@/lib/constants';
 
 interface WalletOnboardingWizardProps {
   onCreateIdentity: (data: CreateIdentityRequest) => Promise<PaxosIdentity | void>;
@@ -16,7 +24,7 @@ interface WalletOnboardingWizardProps {
 }
 
 type WalletType = 'personal' | 'business';
-type Step = 'wallet-type' | 'personal-info' | 'address' | 'business-info' | 'business-address' | 'review';
+type Step = 'wallet-type' | 'personal-info' | 'address' | 'cdd' | 'business-info' | 'business-address' | 'business-cdd' | 'review';
 
 const emptyAddress: PaxosAddress = {
   country: 'USA',
@@ -48,6 +56,12 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
   const [nationality, setNationality] = useState('USA');
   const [individualAddress, setIndividualAddress] = useState<PaxosAddress>(emptyAddress);
 
+  // Individual CDD - REQUIRED
+  const [purposeOfAccount, setPurposeOfAccount] = useState<string>('');
+  const [employmentStatus, setEmploymentStatus] = useState<string>('');
+  const [sourceOfWealth, setSourceOfWealth] = useState<string>('');
+  const [sourceOfFunds, setSourceOfFunds] = useState<string>('');
+
   // Business Fields - all required per API
   const [bizName, setBizName] = useState('');
   const [bizEmail, setBizEmail] = useState('');
@@ -58,6 +72,10 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
   const [bizGovtRegDate, setBizGovtRegDate] = useState('');
   const [bizAddress, setBizAddress] = useState<PaxosAddress>(emptyAddress);
 
+  // Business CDD - REQUIRED
+  const [bizPurpose, setBizPurpose] = useState<string>('');
+  const [bizSourceOfFunds, setBizSourceOfFunds] = useState<string>('');
+
   // Use existing identity
   const [useExistingIndividual, setUseExistingIndividual] = useState(false);
   const [selectedExistingId, setSelectedExistingId] = useState<string>('');
@@ -66,9 +84,9 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
 
   const getSteps = (): Step[] => {
     if (walletType === 'personal') {
-      return ['wallet-type', 'personal-info', 'address', 'review'];
+      return ['wallet-type', 'personal-info', 'address', 'cdd', 'review'];
     } else if (walletType === 'business') {
-      return ['wallet-type', 'personal-info', 'address', 'business-info', 'business-address', 'review'];
+      return ['wallet-type', 'personal-info', 'address', 'cdd', 'business-info', 'business-address', 'business-cdd', 'review'];
     }
     return ['wallet-type'];
   };
@@ -81,8 +99,10 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
       'wallet-type': 'Type',
       'personal-info': 'Personal',
       'address': 'Address',
+      'cdd': 'CDD',
       'business-info': 'Business',
       'business-address': 'Biz Address',
+      'business-cdd': 'Biz CDD',
       'review': 'Review',
     };
     return labels[s];
@@ -125,7 +145,10 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
               address: individualAddress,
             },
             customer_due_diligence: {
-              purpose_of_account: 'SAVINGS',
+              purpose_of_account: purposeOfAccount as any,
+              employment_status: employmentStatus as any,
+              source_of_wealth: sourceOfWealth as any,
+              source_of_funds: sourceOfFunds as any,
             },
           };
           const result = await onCreateIdentity(individualData);
@@ -152,7 +175,10 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
               address: individualAddress,
             },
             customer_due_diligence: {
-              purpose_of_account: 'INVESTMENT_TRADING',
+              purpose_of_account: purposeOfAccount as any,
+              employment_status: employmentStatus as any,
+              source_of_wealth: sourceOfWealth as any,
+              source_of_funds: sourceOfFunds as any,
             },
           };
           const individualResult = await onCreateIdentity(individualData);
@@ -180,7 +206,8 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
           }] : [],
           customer_due_diligence: {
             industry_sector: bizSubType,
-            purpose_of_account: 'INVESTMENT_TRADING',
+            purpose_of_account: bizPurpose as any,
+            source_of_funds: bizSourceOfFunds as any,
           },
         };
         const institutionResult = await onCreateIdentity(institutionData);
@@ -206,11 +233,18 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
       case 'address':
         if (useExistingIndividual) return true;
         return !!(individualAddress.address1 && individualAddress.city && individualAddress.province && individualAddress.zip_code && individualAddress.country);
+      case 'cdd':
+        if (useExistingIndividual) return true;
+        // CDD is mandatory
+        return !!(purposeOfAccount && employmentStatus && sourceOfWealth && sourceOfFunds);
       case 'business-info':
         // All institution fields required
         return !!(bizName && bizEmail && bizPhone && bizSubType && bizCipId && bizGovtRegDate);
       case 'business-address':
         return !!(bizAddress.address1 && bizAddress.city && bizAddress.province && bizAddress.zip_code && bizAddress.country);
+      case 'business-cdd':
+        // Business CDD is mandatory
+        return !!(bizPurpose && bizSourceOfFunds);
       case 'review':
         return true;
       default:
@@ -435,6 +469,99 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
           </div>
         )}
 
+        {/* INDIVIDUAL CDD */}
+        {step === 'cdd' && !useExistingIndividual && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Customer Due Diligence</h3>
+                <p className="text-sm text-muted-foreground">Required compliance information</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Purpose of Account *</Label>
+              <Select value={purposeOfAccount} onValueChange={setPurposeOfAccount}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select purpose" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCOUNT_PURPOSES.map((purpose) => (
+                    <SelectItem key={purpose.value} value={purpose.value}>
+                      {purpose.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Employment Status *</Label>
+              <Select value={employmentStatus} onValueChange={setEmploymentStatus}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select employment status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMPLOYMENT_STATUSES.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Source of Wealth *</Label>
+              <Select value={sourceOfWealth} onValueChange={setSourceOfWealth}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select source of wealth" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCE_OF_WEALTH.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Source of Funds *</Label>
+              <Select value={sourceOfFunds} onValueChange={setSourceOfFunds}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select source of funds" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCE_OF_FUNDS.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        {step === 'cdd' && useExistingIndividual && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-success/10 flex items-center justify-center">
+                <Check className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Using Existing Identity</h3>
+                <p className="text-sm text-muted-foreground">Due diligence information is already on file</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* BUSINESS INFO */}
         {step === 'business-info' && (
           <div className="space-y-6">
@@ -497,6 +624,53 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
           </div>
         )}
 
+        {/* BUSINESS CDD */}
+        {step === 'business-cdd' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Business Due Diligence</h3>
+                <p className="text-sm text-muted-foreground">Required compliance information for the business</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Purpose of Account *</Label>
+              <Select value={bizPurpose} onValueChange={setBizPurpose}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select purpose" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCOUNT_PURPOSES.map((purpose) => (
+                    <SelectItem key={purpose.value} value={purpose.value}>
+                      {purpose.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Source of Funds *</Label>
+              <Select value={bizSourceOfFunds} onValueChange={setBizSourceOfFunds}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select source of funds" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SOURCE_OF_FUNDS.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
         {/* REVIEW */}
         {step === 'review' && (
           <div className="space-y-6">
@@ -515,7 +689,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <span className="text-muted-foreground">Name:</span><span className="text-foreground">{firstName} {lastName}</span>
                     {email && (<><span className="text-muted-foreground">Email:</span><span className="text-foreground">{email}</span></>)}
-                    {phone && (<><span className="text-muted-foreground">Phone:</span><span className="text-foreground">{phone}</span></>)}
+                    <span className="text-muted-foreground">Purpose:</span><span className="text-foreground">{ACCOUNT_PURPOSES.find(p => p.value === purposeOfAccount)?.label}</span>
                   </div>
                 )}
               </div>
@@ -526,6 +700,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
                     <span className="text-muted-foreground">Legal Name:</span><span className="text-foreground">{bizName}</span>
                     <span className="text-muted-foreground">Type:</span><span className="text-foreground">{INSTITUTION_TYPES.find(t => t.value === bizType)?.label}</span>
                     <span className="text-muted-foreground">Industry:</span><span className="text-foreground">{INDUSTRY_SECTORS.find(s => s.value === bizSubType)?.label}</span>
+                    <span className="text-muted-foreground">Purpose:</span><span className="text-foreground">{ACCOUNT_PURPOSES.find(p => p.value === bizPurpose)?.label}</span>
                   </div>
                 </div>
               )}
