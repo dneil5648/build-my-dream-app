@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus } from 'lucide-react';
+import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,39 @@ import { CreateIdentityForm } from '@/components/shared/CreateIdentityForm';
 import { CreateAccountForm } from '@/components/shared/CreateAccountForm';
 import { CreateIdentityRequest, CreateAccountRequest } from '@/api/types';
 
+// Available assets based on API spec
+const AVAILABLE_ASSETS = [
+  { id: 'BTC', name: 'Bitcoin' },
+  { id: 'ETH', name: 'Ethereum' },
+  { id: 'USDC', name: 'USD Coin' },
+  { id: 'USDP', name: 'Pax Dollar' },
+  { id: 'PYUSD', name: 'PayPal USD' },
+  { id: 'SOL', name: 'Solana' },
+  { id: 'LTC', name: 'Litecoin' },
+  { id: 'BCH', name: 'Bitcoin Cash' },
+  { id: 'PAXG', name: 'PAX Gold' },
+];
+
+export interface AssetMapping {
+  assetId: string;
+  customName: string;
+  iconColor?: string;
+}
+
+export interface WhiteLabelConfig {
+  walletName: string;
+  assetMappings: AssetMapping[];
+}
+
+export const getWhiteLabelConfig = (): WhiteLabelConfig | null => {
+  const saved = localStorage.getItem('whiteLabelConfig');
+  return saved ? JSON.parse(saved) : null;
+};
+
+export const saveWhiteLabelConfig = (config: WhiteLabelConfig): void => {
+  localStorage.setItem('whiteLabelConfig', JSON.stringify(config));
+};
+
 const ConfigPage: React.FC = () => {
   const [config, setConfig] = useState<ApiConfig>({
     baseUrl: 'http://localhost:8080',
@@ -31,6 +64,15 @@ const ConfigPage: React.FC = () => {
   const [identityDialogOpen, setIdentityDialogOpen] = useState(false);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
 
+  // White Label config state
+  const [whiteLabelConfig, setWhiteLabelConfig] = useState<WhiteLabelConfig>({
+    walletName: 'My Wallet',
+    assetMappings: [],
+  });
+  const [newAssetId, setNewAssetId] = useState('');
+  const [newCustomName, setNewCustomName] = useState('');
+  const [newIconColor, setNewIconColor] = useState('#6366f1');
+
   // API hooks
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
@@ -40,12 +82,16 @@ const ConfigPage: React.FC = () => {
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
 
-  // Load saved config on mount
+  // Load saved configs on mount
   useEffect(() => {
     const savedConfig = getApiConfig();
     if (savedConfig) {
       setConfig(savedConfig);
       setIsConnected(true);
+    }
+    const savedWhiteLabel = getWhiteLabelConfig();
+    if (savedWhiteLabel) {
+      setWhiteLabelConfig(savedWhiteLabel);
     }
   }, []);
 
@@ -111,12 +157,47 @@ const ConfigPage: React.FC = () => {
     }
   };
 
+  // White Label handlers
+  const handleAddAssetMapping = () => {
+    if (!newAssetId || !newCustomName.trim()) {
+      toast.error('Please select an asset and provide a custom name');
+      return;
+    }
+    if (whiteLabelConfig.assetMappings.some(m => m.assetId === newAssetId)) {
+      toast.error('This asset is already mapped');
+      return;
+    }
+    setWhiteLabelConfig(prev => ({
+      ...prev,
+      assetMappings: [...prev.assetMappings, { 
+        assetId: newAssetId, 
+        customName: newCustomName.trim(),
+        iconColor: newIconColor 
+      }]
+    }));
+    setNewAssetId('');
+    setNewCustomName('');
+    setNewIconColor('#6366f1');
+  };
+
+  const handleRemoveAssetMapping = (assetId: string) => {
+    setWhiteLabelConfig(prev => ({
+      ...prev,
+      assetMappings: prev.assetMappings.filter(m => m.assetId !== assetId)
+    }));
+  };
+
+  const handleSaveWhiteLabelConfig = () => {
+    saveWhiteLabelConfig(whiteLabelConfig);
+    toast.success('White Label configuration saved');
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Configuration</h2>
-        <p className="text-muted-foreground">Manage API settings, identities, and accounts.</p>
+        <p className="text-muted-foreground">Manage API settings, identities, accounts, and white label settings.</p>
       </div>
 
       {/* Tabs */}
@@ -125,6 +206,7 @@ const ConfigPage: React.FC = () => {
           <TabsTrigger value="api">API Settings</TabsTrigger>
           <TabsTrigger value="identities">Identities ({identities.length})</TabsTrigger>
           <TabsTrigger value="accounts">Accounts ({accounts.length})</TabsTrigger>
+          <TabsTrigger value="whitelabel">White Label</TabsTrigger>
         </TabsList>
 
         {/* API Settings Tab */}
@@ -355,6 +437,153 @@ const ConfigPage: React.FC = () => {
               accounts={accounts}
               isLoading={loadingAccounts}
             />
+          </div>
+        </TabsContent>
+
+        {/* White Label Tab */}
+        <TabsContent value="whitelabel" className="space-y-6">
+          {/* Wallet Branding */}
+          <div className="glass rounded-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Wallet Branding</h3>
+                <p className="text-sm text-muted-foreground">Customize your white label wallet appearance</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="walletName">Wallet Display Name</Label>
+                <Input
+                  id="walletName"
+                  placeholder="My Custom Wallet"
+                  value={whiteLabelConfig.walletName}
+                  onChange={(e) => setWhiteLabelConfig(prev => ({ ...prev, walletName: e.target.value }))}
+                  className="bg-secondary border-border max-w-md"
+                />
+                <p className="text-xs text-muted-foreground">This name will be displayed in the wallet header</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Asset Mapping */}
+          <div className="glass rounded-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                <Palette className="h-5 w-5 text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Asset Mapping</h3>
+                <p className="text-sm text-muted-foreground">Map tokens to custom names for your wallet interface</p>
+              </div>
+            </div>
+
+            {/* Add New Mapping */}
+            <div className="grid md:grid-cols-4 gap-4 mb-6 p-4 bg-secondary/50 rounded-lg">
+              <div className="space-y-2">
+                <Label>Asset</Label>
+                <Select value={newAssetId} onValueChange={setNewAssetId}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select asset" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AVAILABLE_ASSETS.filter(a => !whiteLabelConfig.assetMappings.some(m => m.assetId === a.id)).map(asset => (
+                      <SelectItem key={asset.id} value={asset.id}>
+                        {asset.id} - {asset.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Custom Name</Label>
+                <Input
+                  placeholder="e.g., Digital Gold"
+                  value={newCustomName}
+                  onChange={(e) => setNewCustomName(e.target.value)}
+                  className="bg-secondary border-border"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Icon Color</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={newIconColor}
+                    onChange={(e) => setNewIconColor(e.target.value)}
+                    className="w-12 h-10 p-1 bg-secondary border-border cursor-pointer"
+                  />
+                  <Input
+                    value={newIconColor}
+                    onChange={(e) => setNewIconColor(e.target.value)}
+                    className="bg-secondary border-border flex-1"
+                    placeholder="#6366f1"
+                  />
+                </div>
+              </div>
+              <div className="flex items-end">
+                <Button onClick={handleAddAssetMapping} className="w-full bg-primary hover:bg-primary/90">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Mapping
+                </Button>
+              </div>
+            </div>
+
+            {/* Existing Mappings */}
+            {whiteLabelConfig.assetMappings.length > 0 ? (
+              <div className="space-y-3">
+                <Label className="text-sm text-muted-foreground">Configured Asset Mappings</Label>
+                <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+                  {whiteLabelConfig.assetMappings.map((mapping) => {
+                    const originalAsset = AVAILABLE_ASSETS.find(a => a.id === mapping.assetId);
+                    return (
+                      <div key={mapping.assetId} className="flex items-center justify-between p-4 bg-secondary/30">
+                        <div className="flex items-center gap-4">
+                          <div 
+                            className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                            style={{ backgroundColor: mapping.iconColor || '#6366f1' }}
+                          >
+                            {mapping.customName.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">{mapping.customName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {mapping.assetId} ({originalAsset?.name})
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleRemoveAssetMapping(mapping.assetId)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Palette className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No asset mappings configured yet</p>
+                <p className="text-sm">Add mappings above to customize asset names in the wallet</p>
+              </div>
+            )}
+
+            <div className="mt-8 flex justify-end">
+              <Button 
+                onClick={handleSaveWhiteLabelConfig}
+                className="bg-primary hover:bg-primary/90"
+              >
+                Save White Label Configuration
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
