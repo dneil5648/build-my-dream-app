@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { toast } from 'sonner';
 import { useCreateCryptoAddress, useCryptoAddresses } from '@/hooks/useCrypto';
+import { useAccounts } from '@/hooks/useAccounts';
 import { CryptoNetwork } from '@/api/types';
 
 const CryptoDeposit: React.FC = () => {
@@ -17,9 +18,11 @@ const CryptoDeposit: React.FC = () => {
     network: '',
   });
   const [generatedAddress, setGeneratedAddress] = useState<{ address: string; id: string } | null>(null);
-  
+
   const createCryptoAddress = useCreateCryptoAddress();
   const { data: existingAddresses } = useCryptoAddresses();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const accounts = accountsResponse?.data || [];
 
   const handleGenerate = async () => {
     if (!formData.account || !formData.sourceAsset || !formData.network) {
@@ -32,8 +35,9 @@ const CryptoDeposit: React.FC = () => {
         account_id: formData.account,
         network: formData.network as CryptoNetwork,
         source_asset: formData.sourceAsset,
+        destination_asset: formData.destAsset || formData.sourceAsset, // Default to same as source (no conversion)
       });
-      
+
       if (result.success && result.data) {
         setGeneratedAddress({
           address: result.data.wallet_address,
@@ -42,17 +46,7 @@ const CryptoDeposit: React.FC = () => {
         toast.success('Deposit address created');
       }
     } catch (error) {
-      // Fallback to mock for demo purposes
-      const mockAddresses: Record<string, string> = {
-        BTC: 'bc1q9h7z9w8k3qx2p5v6t7y8u9i0o1k2l3m4n5b6v7c8x9z0',
-        ETH: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-        USDC: '0x8ba1f109551bD432803012645Ac136ddd64DBA72',
-      };
-      setGeneratedAddress({
-        address: mockAddresses[formData.sourceAsset] || mockAddresses.BTC,
-        id: 'mock-' + Date.now(),
-      });
-      toast.success('Deposit address generated');
+      toast.error(error instanceof Error ? error.message : 'Failed to create deposit address');
     }
   };
 
@@ -81,13 +75,23 @@ const CryptoDeposit: React.FC = () => {
       <div className="glass rounded-xl p-8 space-y-6">
         <div className="space-y-2">
           <Label>Account</Label>
-          <Select value={formData.account} onValueChange={(v) => setFormData({...formData, account: v})}>
+          <Select
+            value={formData.account}
+            onValueChange={(v) => setFormData({...formData, account: v})}
+            disabled={loadingAccounts}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select account" />
+              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="main">Main Account</SelectItem>
-              <SelectItem value="trading">Trading Account</SelectItem>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.paxos_account_id}>
+                  Account {account.paxos_account_id.slice(0, 8)}...
+                </SelectItem>
+              ))}
+              {accounts.length === 0 && !loadingAccounts && (
+                <SelectItem value="" disabled>No accounts found</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>

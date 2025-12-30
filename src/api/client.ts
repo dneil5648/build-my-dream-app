@@ -41,8 +41,10 @@ export const clearAuthToken = (): void => {
 // Base API client
 class ApiClient {
   private getBaseUrl(): string {
+    // In development, use empty string to leverage Vite proxy
+    // In production, use configured baseUrl or default to empty (same origin)
     const config = getApiConfig();
-    return config?.baseUrl || 'http://localhost:8080';
+    return config?.baseUrl || '';
   }
 
   private async request<T>(

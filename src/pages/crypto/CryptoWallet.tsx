@@ -9,15 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
-import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity } from '@/api/types';
+import { useTransactions } from '@/hooks/useTransactions';
+import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, Transaction } from '@/api/types';
 import { toast } from 'sonner';
-
-const mockTransactions = [
-  { id: '1', type: 'deposit', asset: 'BTC', amount: '+0.15 BTC', status: 'completed' as const, date: '2024-01-15 14:30' },
-  { id: '2', type: 'withdrawal', asset: 'ETH', amount: '-2.5 ETH', status: 'processing' as const, date: '2024-01-15 10:15' },
-  { id: '3', type: 'deposit', asset: 'USDC', amount: '+10,000 USDC', status: 'completed' as const, date: '2024-01-14 16:45' },
-  { id: '4', type: 'withdrawal', asset: 'BTC', amount: '-0.05 BTC', status: 'completed' as const, date: '2024-01-13 09:20' },
-];
 
 const CryptoWallet: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -26,12 +20,16 @@ const CryptoWallet: React.FC = () => {
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse } = useIdentities();
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
+  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ limit: 4 });
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const balances = balancesResponse?.data || [];
+  const transactions = (transactionsResponse?.data || []).filter(
+    (tx: Transaction) => tx.type === 'deposit' || tx.type === 'withdrawal'
+  );
 
   // Auto-select first account if available
   React.useEffect(() => {
@@ -174,33 +172,46 @@ const CryptoWallet: React.FC = () => {
             View All
           </Link>
         </div>
-        <div className="space-y-3">
-          {mockTransactions.map((tx) => (
-            <div 
-              key={tx.id}
-              className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                  tx.type === 'deposit' ? 'bg-success/20' : 'bg-warning/20'
-                }`}>
-                  {tx.type === 'deposit' ? (
-                    <ArrowDownToLine className={`h-5 w-5 text-success`} />
-                  ) : (
-                    <ArrowUpFromLine className={`h-5 w-5 text-warning`} />
-                  )}
+        {loadingTransactions ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No recent transactions</p>
+            <p className="text-sm">Transactions will appear here</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {transactions.map((tx: Transaction) => (
+              <div
+                key={tx.id}
+                className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                    tx.type === 'deposit' ? 'bg-success/20' : 'bg-warning/20'
+                  }`}>
+                    {tx.type === 'deposit' ? (
+                      <ArrowDownToLine className={`h-5 w-5 text-success`} />
+                    ) : (
+                      <ArrowUpFromLine className={`h-5 w-5 text-warning`} />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {tx.type === 'deposit' ? '+' : '-'}{tx.amount} {tx.source_asset}
+                    </p>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {tx.type} • {new Date(tx.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-foreground">{tx.amount}</p>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {tx.type} • {tx.date}
-                  </p>
-                </div>
+                <TransactionStatusBadge status={tx.status} />
               </div>
-              <TransactionStatusBadge status={tx.status} />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Wallet Onboarding Dialog */}

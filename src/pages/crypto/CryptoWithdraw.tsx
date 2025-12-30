@@ -7,6 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { toast } from 'sonner';
+import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
+import { useCalculateWithdrawalFee } from '@/hooks/useCrypto';
+import { useWithdrawAssets } from '@/hooks/useAssets';
+import { CryptoNetwork } from '@/api/types';
 
 const CryptoWithdraw: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -18,25 +22,68 @@ const CryptoWithdraw: React.FC = () => {
     network: '',
   });
   const [fee, setFee] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const balances: Record<string, string> = {
-    BTC: '2.45678',
-    ETH: '15.8921',
-    USDC: '50,000.00',
-  };
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(formData.account);
+  const calculateFee = useCalculateWithdrawalFee();
+  const withdrawAssets = useWithdrawAssets();
+
+  const accounts = accountsResponse?.data || [];
+  const balances = balancesResponse?.data || [];
 
   const handleCalculateFee = async () => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setFee('0.0005');
+    if (!formData.account || !formData.asset || !formData.network || !formData.amount || !formData.destination) {
+      return;
+    }
+
+    try {
+      const result = await calculateFee.mutateAsync({
+        asset: formData.asset,
+        network: formData.network as CryptoNetwork,
+        amount: formData.amount,
+        destination_address: formData.destination,
+      });
+
+      if (result.success && result.data) {
+        setFee(result.data.fee);
+      }
+    } catch (error) {
+      toast.error('Failed to calculate fee');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLoading(false);
-    toast.success('Withdrawal initiated successfully');
+
+    if (!formData.account || !formData.asset || !formData.destination || !formData.amount) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await withdrawAssets.mutateAsync({
+        account_id: formData.account,
+        source_asset: formData.asset,
+        destination_asset: formData.asset, // Same asset (no conversion)
+        destination_address: formData.type === 'external' ? formData.destination : undefined,
+        destination_account_id: formData.type === 'internal' ? formData.destination : undefined,
+        amount: formData.amount,
+        network: formData.type === 'external' ? (formData.network as CryptoNetwork) : undefined,
+      });
+      toast.success('Withdrawal initiated successfully');
+      // Reset form
+      setFormData({
+        account: formData.account,
+        asset: '',
+        type: 'external',
+        destination: '',
+        amount: '',
+        network: '',
+      });
+      setFee(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to initiate withdrawal');
+    }
   };
 
   return (
@@ -79,52 +126,53 @@ const CryptoWithdraw: React.FC = () => {
 
         <div className="space-y-2">
           <Label>Source Account</Label>
-          <Select value={formData.account} onValueChange={(v) => setFormData({...formData, account: v})}>
+          <Select
+            value={formData.account}
+            onValueChange={(v) => setFormData({...formData, account: v, asset: '', amount: ''})}
+            disabled={loadingAccounts}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select account" />
+              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="main">Main Account</SelectItem>
-              <SelectItem value="trading">Trading Account</SelectItem>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.paxos_account_id}>
+                  Account {account.paxos_account_id.slice(0, 8)}...
+                </SelectItem>
+              ))}
+              {accounts.length === 0 && !loadingAccounts && (
+                <SelectItem value="" disabled>No accounts found</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
           <Label>Asset</Label>
-          <Select value={formData.asset} onValueChange={(v) => { setFormData({...formData, asset: v}); handleCalculateFee(); }}>
+          <Select
+            value={formData.asset}
+            onValueChange={(v) => { setFormData({...formData, asset: v, network: ''}); setFee(null); }}
+            disabled={!formData.account || loadingBalances}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select asset" />
+              <SelectValue placeholder={loadingBalances ? 'Loading...' : formData.account ? 'Select asset' : 'Select account first'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="BTC">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="BTC" size="sm" />
-                    Bitcoin (BTC)
+              {balances.map((balance) => (
+                <SelectItem key={balance.asset} value={balance.asset}>
+                  <div className="flex items-center justify-between w-full gap-4">
+                    <div className="flex items-center gap-2">
+                      <AssetIcon asset={balance.asset} size="sm" />
+                      {balance.asset}
+                    </div>
+                    <span className="text-muted-foreground">{balance.available}</span>
                   </div>
-                  <span className="text-muted-foreground">{balances.BTC}</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="ETH">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="ETH" size="sm" />
-                    Ethereum (ETH)
-                  </div>
-                  <span className="text-muted-foreground">{balances.ETH}</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="USDC">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="USDC" size="sm" />
-                    USD Coin (USDC)
-                  </div>
-                  <span className="text-muted-foreground">{balances.USDC}</span>
-                </div>
-              </SelectItem>
-        </SelectContent>
+                </SelectItem>
+              ))}
+              {balances.length === 0 && !loadingBalances && formData.account && (
+                <SelectItem value="" disabled>No assets available</SelectItem>
+              )}
+            </SelectContent>
           </Select>
         </div>
 
@@ -178,8 +226,14 @@ const CryptoWithdraw: React.FC = () => {
                 <SelectValue placeholder="Select destination account" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="trading">Trading Account</SelectItem>
-                <SelectItem value="reserve">Reserve Account</SelectItem>
+                {accounts.filter(a => a.paxos_account_id !== formData.account).map((account) => (
+                  <SelectItem key={account.id} value={account.paxos_account_id}>
+                    Account {account.paxos_account_id.slice(0, 8)}...
+                  </SelectItem>
+                ))}
+                {accounts.filter(a => a.paxos_account_id !== formData.account).length === 0 && (
+                  <SelectItem value="" disabled>No other accounts available</SelectItem>
+                )}
               </SelectContent>
             </Select>
           )}
@@ -188,13 +242,18 @@ const CryptoWithdraw: React.FC = () => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Amount</Label>
-            {formData.asset && (
-              <button 
+            {formData.asset && balances.find(b => b.asset === formData.asset) && (
+              <button
                 type="button"
                 className="text-xs text-primary hover:underline"
-                onClick={() => setFormData({...formData, amount: balances[formData.asset] || ''})}
+                onClick={() => {
+                  const balance = balances.find(b => b.asset === formData.asset);
+                  if (balance) {
+                    setFormData({...formData, amount: balance.available});
+                  }
+                }}
               >
-                Max: {balances[formData.asset]}
+                Max: {balances.find(b => b.asset === formData.asset)?.available}
               </button>
             )}
           </div>
@@ -222,13 +281,13 @@ const CryptoWithdraw: React.FC = () => {
           </div>
         )}
 
-        <Button 
-          type="submit" 
-          disabled={loading || !formData.amount || !formData.destination || (formData.type === 'external' && !formData.network)} 
+        <Button
+          type="submit"
+          disabled={withdrawAssets.isPending || !formData.amount || !formData.destination || (formData.type === 'external' && !formData.network)}
           className="w-full bg-warning hover:bg-warning/90 text-warning-foreground"
         >
           <ArrowUpFromLine className="h-4 w-4 mr-2" />
-          {loading ? 'Processing...' : 'Withdraw'}
+          {withdrawAssets.isPending ? 'Processing...' : 'Withdraw'}
         </Button>
       </form>
     </div>

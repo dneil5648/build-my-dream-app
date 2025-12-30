@@ -10,9 +10,37 @@ import {
 } from '../types';
 
 export const authService = {
-  // Login
+  // Login - backend expects form data
   login: async (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
-    const response = await apiClient.post<LoginResponse>('/users/login', credentials);
+    // Backend expects application/x-www-form-urlencoded
+    const formData = new URLSearchParams();
+    formData.append('user_name', credentials.user_name);
+    formData.append('password', credentials.password);
+
+    const token = localStorage.getItem('auth_token');
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
+    if (token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Use relative URL to leverage Vite proxy in development
+    const fetchResponse = await fetch('/users/login', {
+      method: 'POST',
+      headers,
+      body: formData.toString(),
+    });
+
+    if (!fetchResponse.ok) {
+      const errorText = await fetchResponse.text();
+      throw new Error(errorText || `HTTP error! status: ${fetchResponse.status}`);
+    }
+
+    const response: ApiResponse<LoginResponse> = await fetchResponse.json();
+
     if (response.success && response.data.token) {
       setAuthToken(response.data.token);
     }

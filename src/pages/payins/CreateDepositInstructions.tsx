@@ -12,9 +12,10 @@ import { FiatNetwork, AccountType } from '@/api/types';
 const CreateDepositInstructions: React.FC = () => {
   const [formData, setFormData] = useState({
     account_id: '',
-    network: '' as FiatNetwork | '',
-    account_type: '' as AccountType | '',
+    fiat_network: '' as FiatNetwork | '',
+    fiat_account_type: '' as AccountType | '',
     source_asset: 'USD',
+    destination_asset: 'USD', // default to same as source (no conversion)
   });
   const [instructions, setInstructions] = useState<{
     id: string;
@@ -30,8 +31,8 @@ const CreateDepositInstructions: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.account_id || !formData.network || !formData.account_type) {
+
+    if (!formData.account_id || !formData.fiat_network || !formData.fiat_account_type) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -39,9 +40,10 @@ const CreateDepositInstructions: React.FC = () => {
     try {
       const response = await createInstructions.mutateAsync({
         account_id: formData.account_id,
-        network: formData.network as FiatNetwork,
-        account_type: formData.account_type as AccountType,
+        fiat_network: formData.fiat_network as FiatNetwork,
+        fiat_account_type: formData.fiat_account_type as AccountType,
         source_asset: formData.source_asset,
+        destination_asset: formData.destination_asset,
       });
       
       if (response.success && response.data) {
@@ -107,7 +109,7 @@ const CreateDepositInstructions: React.FC = () => {
             </div>
             <div className="space-y-2">
               <Label>Network</Label>
-              <Select value={formData.network} onValueChange={(v) => setFormData({...formData, network: v as FiatNetwork})}>
+              <Select value={formData.fiat_network} onValueChange={(v) => setFormData({...formData, fiat_network: v as FiatNetwork})}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue placeholder="Select network" />
                 </SelectTrigger>
@@ -126,7 +128,7 @@ const CreateDepositInstructions: React.FC = () => {
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Account Type</Label>
-              <Select value={formData.account_type} onValueChange={(v) => setFormData({...formData, account_type: v as AccountType})}>
+              <Select value={formData.fiat_account_type} onValueChange={(v) => setFormData({...formData, fiat_account_type: v as AccountType})}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -148,6 +150,25 @@ const CreateDepositInstructions: React.FC = () => {
                   <SelectItem value="SGD">SGD</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Destination Asset</Label>
+              <Select value={formData.destination_asset} onValueChange={(v) => setFormData({...formData, destination_asset: v})}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD (No conversion)</SelectItem>
+                  <SelectItem value="BTC">Bitcoin (BTC)</SelectItem>
+                  <SelectItem value="ETH">Ethereum (ETH)</SelectItem>
+                  <SelectItem value="USDC">USD Coin (USDC)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.source_asset === formData.destination_asset
+                  ? 'Direct deposit - no conversion'
+                  : 'Auto-convert on deposit via orchestration'}
+              </p>
             </div>
           </div>
 

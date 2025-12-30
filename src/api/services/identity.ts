@@ -17,8 +17,15 @@ export const identityService = {
     return apiClient.get<PaxosIdentity>(`/entities/identity/${id}`);
   },
 
-  // Create identity
+  // Create identity - backend expects different endpoints for individual vs institution
   createIdentity: async (data: CreateIdentityRequest): Promise<ApiResponse<PaxosIdentity>> => {
-    return apiClient.post<PaxosIdentity>('/entities/identity', data);
+    const endpoint = data.type === 'INDIVIDUAL'
+      ? '/entities/identity/individual'
+      : '/entities/identity/institution';
+
+    // Backend expects the identity data directly, not wrapped in type/individual/institution
+    const payload = data.type === 'INDIVIDUAL' ? data.individual : data.institution;
+
+    return apiClient.post<PaxosIdentity>(endpoint, payload);
   },
 };

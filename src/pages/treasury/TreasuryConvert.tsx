@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { toast } from 'sonner';
+import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
+import { useConvertAssets } from '@/hooks/useAssets';
 
 const TreasuryConvert: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -15,44 +17,33 @@ const TreasuryConvert: React.FC = () => {
     destAsset: '',
     amount: '',
   });
-  const [rate, setRate] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const balances: Record<string, string> = {
-    BTC: '2.45678',
-    ETH: '15.8921',
-    USDC: '50,000.00',
-    USD: '25,000.00',
-  };
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(formData.account);
+  const convertAssets = useConvertAssets();
 
-  const rates: Record<string, Record<string, number>> = {
-    BTC: { USD: 43000, USDC: 43000, ETH: 18.5 },
-    ETH: { USD: 2300, USDC: 2300, BTC: 0.054 },
-    USDC: { USD: 1, BTC: 0.000023, ETH: 0.00043 },
-    USD: { USDC: 1, BTC: 0.000023, ETH: 0.00043 },
-  };
-
-  const getRate = () => {
-    if (formData.sourceAsset && formData.destAsset && rates[formData.sourceAsset]) {
-      return rates[formData.sourceAsset][formData.destAsset] || 1;
-    }
-    return null;
-  };
-
-  const getEstimatedOutput = () => {
-    const r = getRate();
-    if (r && formData.amount) {
-      return (parseFloat(formData.amount.replace(/,/g, '')) * r).toFixed(6);
-    }
-    return null;
-  };
+  const accounts = accountsResponse?.data || [];
+  const balances = balancesResponse?.data || [];
 
   const handleConvert = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLoading(false);
-    toast.success('Conversion completed successfully!');
-    setFormData({ account: '', sourceAsset: '', destAsset: '', amount: '' });
+    if (!formData.account || !formData.sourceAsset || !formData.destAsset || !formData.amount) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    try {
+      await convertAssets.mutateAsync({
+        account_id: formData.account,
+        source_asset: formData.sourceAsset,
+        destination_asset: formData.destAsset,
+        amount: formData.amount,
+      });
+      toast.success('Conversion completed successfully!');
+      // Reset form but keep account selected
+      setFormData({ account: formData.account, sourceAsset: '', destAsset: '', amount: '' });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to convert assets');
+    }
   };
 
   return (
@@ -73,13 +64,23 @@ const TreasuryConvert: React.FC = () => {
       <div className="glass rounded-xl p-8 space-y-6">
         <div className="space-y-2">
           <Label>Account</Label>
-          <Select value={formData.account} onValueChange={(v) => setFormData({...formData, account: v})}>
+          <Select
+            value={formData.account}
+            onValueChange={(v) => setFormData({...formData, account: v, sourceAsset: '', destAsset: '', amount: ''})}
+            disabled={loadingAccounts}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select account" />
+              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="main">Main Treasury</SelectItem>
-              <SelectItem value="trading">Trading Account</SelectItem>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.paxos_account_id}>
+                  Account {account.paxos_account_id.slice(0, 8)}...
+                </SelectItem>
+              ))}
+              {accounts.length === 0 && !loadingAccounts && (
+                <SelectItem value="" disabled>No accounts found</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -89,19 +90,26 @@ const TreasuryConvert: React.FC = () => {
           <Label>From</Label>
           <div className="p-4 rounded-lg bg-secondary border border-border space-y-4">
             <div className="flex items-center justify-between">
-              <Select value={formData.sourceAsset} onValueChange={(v) => setFormData({...formData, sourceAsset: v})}>
+              <Select
+                value={formData.sourceAsset}
+                onValueChange={(v) => setFormData({...formData, sourceAsset: v, destAsset: '', amount: ''})}
+                disabled={!formData.account || loadingBalances}
+              >
                 <SelectTrigger className="w-40 bg-muted border-0">
-                  <SelectValue placeholder="Asset" />
+                  <SelectValue placeholder={formData.account ? 'Asset' : 'Select acct'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {['BTC', 'ETH', 'USDC', 'USD'].map((asset) => (
-                    <SelectItem key={asset} value={asset}>
+                  {balances.map((balance) => (
+                    <SelectItem key={balance.asset} value={balance.asset}>
                       <div className="flex items-center gap-2">
-                        <AssetIcon asset={asset} size="sm" />
-                        {asset}
+                        <AssetIcon asset={balance.asset} size="sm" />
+                        {balance.asset}
                       </div>
                     </SelectItem>
                   ))}
+                  {balances.length === 0 && !loadingBalances && formData.account && (
+                    <SelectItem value="" disabled>No assets</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <Input
@@ -112,15 +120,20 @@ const TreasuryConvert: React.FC = () => {
                 className="text-right text-xl font-semibold bg-transparent border-0 w-40"
               />
             </div>
-            {formData.sourceAsset && (
+            {formData.sourceAsset && balances.find(b => b.asset === formData.sourceAsset) && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Available:</span>
-                <button 
+                <button
                   type="button"
                   className="text-primary hover:underline"
-                  onClick={() => setFormData({...formData, amount: balances[formData.sourceAsset] || ''})}
+                  onClick={() => {
+                    const balance = balances.find(b => b.asset === formData.sourceAsset);
+                    if (balance) {
+                      setFormData({...formData, amount: balance.available});
+                    }
+                  }}
                 >
-                  {balances[formData.sourceAsset]} {formData.sourceAsset}
+                  {balances.find(b => b.asset === formData.sourceAsset)?.available} {formData.sourceAsset}
                 </button>
               </div>
             )}
@@ -139,48 +152,42 @@ const TreasuryConvert: React.FC = () => {
           <Label>To</Label>
           <div className="p-4 rounded-lg bg-secondary border border-border space-y-4">
             <div className="flex items-center justify-between">
-              <Select value={formData.destAsset} onValueChange={(v) => setFormData({...formData, destAsset: v})}>
+              <Select
+                value={formData.destAsset}
+                onValueChange={(v) => setFormData({...formData, destAsset: v})}
+                disabled={!formData.sourceAsset}
+              >
                 <SelectTrigger className="w-40 bg-muted border-0">
-                  <SelectValue placeholder="Asset" />
+                  <SelectValue placeholder={formData.sourceAsset ? 'Asset' : 'Select from'} />
                 </SelectTrigger>
                 <SelectContent>
-                  {['BTC', 'ETH', 'USDC', 'USD'].filter(a => a !== formData.sourceAsset).map((asset) => (
-                    <SelectItem key={asset} value={asset}>
+                  {balances.filter(b => b.asset !== formData.sourceAsset).map((balance) => (
+                    <SelectItem key={balance.asset} value={balance.asset}>
                       <div className="flex items-center gap-2">
-                        <AssetIcon asset={asset} size="sm" />
-                        {asset}
+                        <AssetIcon asset={balance.asset} size="sm" />
+                        {balance.asset}
                       </div>
                     </SelectItem>
                   ))}
+                  {balances.filter(b => b.asset !== formData.sourceAsset).length === 0 && (
+                    <SelectItem value="" disabled>No other assets</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <span className="text-xl font-semibold text-foreground">
-                {getEstimatedOutput() || '0.00'}
+                {formData.destAsset && formData.amount ? '~' : '0.00'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Rate Display */}
-        {formData.sourceAsset && formData.destAsset && (
-          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-            <span className="text-sm text-muted-foreground">Exchange Rate</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground">
-                1 {formData.sourceAsset} = {getRate()} {formData.destAsset}
-              </span>
-              <RefreshCw className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary" />
-            </div>
-          </div>
-        )}
-
-        <Button 
+        <Button
           onClick={handleConvert}
-          disabled={loading || !formData.amount || !formData.sourceAsset || !formData.destAsset} 
+          disabled={convertAssets.isPending || !formData.amount || !formData.sourceAsset || !formData.destAsset}
           className="w-full bg-primary hover:bg-primary/90"
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Converting...' : 'Convert'}
+          <RefreshCw className={`h-4 w-4 mr-2 ${convertAssets.isPending ? 'animate-spin' : ''}`} />
+          {convertAssets.isPending ? 'Converting...' : 'Convert'}
         </Button>
       </div>
     </div>

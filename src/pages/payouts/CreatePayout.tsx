@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { toast } from 'sonner';
+import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
+import { useFiatAccounts } from '@/hooks/useFiat';
+import { useWithdrawAssets } from '@/hooks/useAssets';
 
 const CreatePayout: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -15,19 +18,43 @@ const CreatePayout: React.FC = () => {
     bankAccount: '',
     amount: '',
   });
-  const [loading, setLoading] = useState(false);
 
-  const balances: Record<string, string> = {
-    USDC: '50,000.00',
-    USD: '25,000.00',
-  };
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(formData.sourceAccount);
+  const { data: fiatAccountsResponse, isLoading: loadingFiatAccounts } = useFiatAccounts();
+  const withdrawAssets = useWithdrawAssets();
+
+  const accounts = accountsResponse?.data || [];
+  const balances = balancesResponse?.data || [];
+  const fiatAccounts = fiatAccountsResponse?.data || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLoading(false);
-    toast.success('Payout initiated successfully');
+
+    if (!formData.sourceAccount || !formData.sourceAsset || !formData.bankAccount || !formData.amount) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await withdrawAssets.mutateAsync({
+        account_id: formData.sourceAccount,
+        source_asset: formData.sourceAsset,
+        destination_asset: 'USD', // Converting to USD for fiat payout
+        fiat_account_id: formData.bankAccount,
+        amount: formData.amount,
+      });
+      toast.success('Payout initiated successfully');
+      // Reset form but keep account selected
+      setFormData({
+        sourceAccount: formData.sourceAccount,
+        sourceAsset: '',
+        bankAccount: '',
+        amount: '',
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to initiate payout');
+    }
   };
 
   return (
@@ -48,65 +75,78 @@ const CreatePayout: React.FC = () => {
       <form onSubmit={handleSubmit} className="glass rounded-xl p-8 space-y-6">
         <div className="space-y-2">
           <Label>Source Account</Label>
-          <Select value={formData.sourceAccount} onValueChange={(v) => setFormData({...formData, sourceAccount: v})}>
+          <Select
+            value={formData.sourceAccount}
+            onValueChange={(v) => setFormData({...formData, sourceAccount: v, sourceAsset: '', amount: ''})}
+            disabled={loadingAccounts}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select account" />
+              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="main">Main Treasury ($75,000)</SelectItem>
-              <SelectItem value="trading">Trading Account ($25,000)</SelectItem>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.paxos_account_id}>
+                  Account {account.paxos_account_id.slice(0, 8)}...
+                </SelectItem>
+              ))}
+              {accounts.length === 0 && !loadingAccounts && (
+                <SelectItem value="" disabled>No accounts found</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
           <Label>Source Asset</Label>
-          <Select value={formData.sourceAsset} onValueChange={(v) => setFormData({...formData, sourceAsset: v})}>
+          <Select
+            value={formData.sourceAsset}
+            onValueChange={(v) => setFormData({...formData, sourceAsset: v, amount: ''})}
+            disabled={!formData.sourceAccount || loadingBalances}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select asset" />
+              <SelectValue placeholder={formData.sourceAccount ? loadingBalances ? 'Loading...' : 'Select asset' : 'Select account first'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="USD">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="USD" size="sm" />
-                    USD
+              {balances.map((balance) => (
+                <SelectItem key={balance.asset} value={balance.asset}>
+                  <div className="flex items-center justify-between w-full gap-4">
+                    <div className="flex items-center gap-2">
+                      <AssetIcon asset={balance.asset} size="sm" />
+                      {balance.asset}
+                    </div>
+                    <span className="text-muted-foreground">{balance.available}</span>
                   </div>
-                  <span className="text-muted-foreground">{balances.USD}</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="USDC">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="USDC" size="sm" />
-                    USDC (auto-convert)
-                  </div>
-                  <span className="text-muted-foreground">{balances.USDC}</span>
-                </div>
-              </SelectItem>
+                </SelectItem>
+              ))}
+              {balances.length === 0 && !loadingBalances && formData.sourceAccount && (
+                <SelectItem value="" disabled>No assets available</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
 
         <div className="space-y-2">
           <Label>Destination Bank Account</Label>
-          <Select value={formData.bankAccount} onValueChange={(v) => setFormData({...formData, bankAccount: v})}>
+          <Select
+            value={formData.bankAccount}
+            onValueChange={(v) => setFormData({...formData, bankAccount: v})}
+            disabled={loadingFiatAccounts}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select bank account" />
+              <SelectValue placeholder={loadingFiatAccounts ? 'Loading...' : 'Select bank account'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="chase">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Chase Business ****1234 (WIRE)
-                </div>
-              </SelectItem>
-              <SelectItem value="boa">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4" />
-                  Bank of America ****5678 (ACH)
-                </div>
-              </SelectItem>
+              {fiatAccounts.map((account) => (
+                <SelectItem key={account.id} value={account.fiat_account_id}>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    {account.fiat_network_name || account.network} • {account.fiat_account_id.slice(0, 12)}...
+                  </div>
+                </SelectItem>
+              ))}
+              {fiatAccounts.length === 0 && !loadingFiatAccounts && (
+                <SelectItem value="" disabled>No bank accounts registered</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -114,13 +154,18 @@ const CreatePayout: React.FC = () => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Amount</Label>
-            {formData.sourceAsset && (
-              <button 
+            {formData.sourceAsset && balances.find(b => b.asset === formData.sourceAsset) && (
+              <button
                 type="button"
                 className="text-xs text-primary hover:underline"
-                onClick={() => setFormData({...formData, amount: balances[formData.sourceAsset]?.replace(/,/g, '') || ''})}
+                onClick={() => {
+                  const balance = balances.find(b => b.asset === formData.sourceAsset);
+                  if (balance) {
+                    setFormData({...formData, amount: balance.available.replace(/,/g, '')});
+                  }
+                }}
               >
-                Max: ${balances[formData.sourceAsset]}
+                Max: ${balances.find(b => b.asset === formData.sourceAsset)?.available}
               </button>
             )}
           </div>
@@ -156,13 +201,13 @@ const CreatePayout: React.FC = () => {
           </div>
         )}
 
-        <Button 
-          type="submit" 
-          disabled={loading || !formData.amount || !formData.bankAccount} 
+        <Button
+          type="submit"
+          disabled={withdrawAssets.isPending || !formData.amount || !formData.bankAccount}
           className="w-full bg-primary hover:bg-primary/90"
         >
           <ArrowUpFromLine className="h-4 w-4 mr-2" />
-          {loading ? 'Processing...' : 'Create Payout'}
+          {withdrawAssets.isPending ? 'Processing...' : 'Create Payout'}
         </Button>
       </form>
     </div>

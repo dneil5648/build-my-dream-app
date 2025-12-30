@@ -11,20 +11,11 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
-import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity } from '@/api/types';
+import { useFiatAccounts } from '@/hooks/useFiat';
+import { useTransactions } from '@/hooks/useTransactions';
+import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, Transaction } from '@/api/types';
 import { getModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
-
-const mockBankAccounts = [
-  { id: '1', name: 'Chase Business', network: 'WIRE', lastFour: '1234', status: 'verified' },
-  { id: '2', name: 'Bank of America', network: 'ACH', lastFour: '5678', status: 'verified' },
-];
-
-const mockPayouts = [
-  { id: '1', amount: '$15,000.00', bankAccount: 'Chase ****1234', status: 'completed' as const, date: '2024-01-15 09:30' },
-  { id: '2', amount: '$8,500.00', bankAccount: 'BoA ****5678', status: 'processing' as const, date: '2024-01-14 16:45' },
-  { id: '3', amount: '$22,000.00', bankAccount: 'Chase ****1234', status: 'completed' as const, date: '2024-01-12 11:20' },
-];
 
 const PayoutsDashboard: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -34,12 +25,18 @@ const PayoutsDashboard: React.FC = () => {
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
+  const { data: fiatAccountsResponse, isLoading: loadingFiatAccounts } = useFiatAccounts();
+  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ limit: 5 });
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const balances = balancesResponse?.data || [];
+  const fiatAccounts = fiatAccountsResponse?.data || [];
+  const payouts = (transactionsResponse?.data || []).filter(
+    (tx: Transaction) => tx.type === 'withdrawal'
+  );
 
   // Get module config and check for institution identity
   const moduleConfig = getModuleIdentityConfig();
@@ -172,29 +169,29 @@ const PayoutsDashboard: React.FC = () => {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Total Payouts"
-              value="$245,500"
-              change="+18.2% from last month"
+              value={loadingTransactions ? '...' : `$${payouts.reduce((sum, tx) => sum + parseFloat(tx.amount || '0'), 0).toLocaleString()}`}
+              change={payouts.filter(tx => tx.status === 'completed').length + ' completed'}
               changeType="positive"
               icon={ArrowUpFromLine}
             />
             <StatCard
               title="Pending"
-              value="$8,500"
-              change="1 in progress"
+              value={loadingTransactions ? '...' : payouts.filter(tx => tx.status === 'pending').length.toString()}
+              change={payouts.filter(tx => tx.status === 'pending').length + ' in progress'}
               changeType="neutral"
               icon={Clock}
             />
             <StatCard
-              title="Completed (30d)"
-              value="$237,000"
-              change="15 transactions"
+              title="Completed"
+              value={loadingTransactions ? '...' : payouts.filter(tx => tx.status === 'completed').length.toString()}
+              change="Recent transactions"
               changeType="positive"
               icon={CheckCircle2}
             />
             <StatCard
               title="Bank Accounts"
-              value="2"
-              change="All verified"
+              value={loadingFiatAccounts ? '...' : fiatAccounts.length.toString()}
+              change={fiatAccounts.filter(a => a.status === 'verified').length + ' verified'}
               changeType="neutral"
               icon={Building2}
             />
@@ -210,29 +207,47 @@ const PayoutsDashboard: React.FC = () => {
                 </Link>
               )}
             </div>
-            <div className="space-y-3">
-              {mockBankAccounts.map((account) => (
-                <div 
-                  key={account.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payouts/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-module-payouts/10 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-module-payouts" />
+            {loadingFiatAccounts ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : fiatAccounts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No bank accounts registered</p>
+                {institutionIdentity ? (
+                  <Link to="/app/payouts/bank-accounts/new" className="text-module-payouts hover:underline">
+                    Add your first bank account
+                  </Link>
+                ) : (
+                  <p className="text-sm">Complete registration first</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {fiatAccounts.map((account) => (
+                  <div
+                    key={account.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payouts/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-module-payouts/10 flex items-center justify-center">
+                        <Building2 className="h-5 w-5 text-module-payouts" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{account.fiat_network_name || account.network}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {account.fiat_account_id.slice(0, 12)}...
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{account.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {account.network} • ****{account.lastFour}
-                      </p>
-                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success capitalize">
+                      {account.status}
+                    </span>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success capitalize">
-                    {account.status}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Recent Payouts */}
@@ -243,27 +258,38 @@ const PayoutsDashboard: React.FC = () => {
                 View All
               </Link>
             </div>
-            <div className="space-y-3">
-              {mockPayouts.map((payout) => (
-                <div 
-                  key={payout.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payouts/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
-                      <ArrowUpFromLine className="h-5 w-5 text-warning" />
+            {loadingTransactions ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : payouts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No payouts yet</p>
+                <p className="text-sm">Payouts will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {payouts.map((payout: Transaction) => (
+                  <div
+                    key={payout.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payouts/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
+                        <ArrowUpFromLine className="h-5 w-5 text-warning" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">${payout.amount} {payout.source_asset}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(payout.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{payout.amount}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {payout.bankAccount} • {payout.date}
-                      </p>
-                    </div>
+                    <TransactionStatusBadge status={payout.status} />
                   </div>
-                  <TransactionStatusBadge status={payout.status} />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -299,7 +325,7 @@ const PayoutsDashboard: React.FC = () => {
 
       {/* Onboarding Dialog - Dismissible */}
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+        <DialogContent className="max-w-3xl bg-card border-border">
           <DialogHeader>
             <DialogTitle>Business Registration</DialogTitle>
           </DialogHeader>
