@@ -51,6 +51,23 @@ export const INSTITUTION_TYPES = [
   { value: 'TRUST', label: 'Trust' },
 ] as const;
 
+// Institution sub-types - required by Paxos API
+export const INSTITUTION_SUB_TYPES = [
+  { value: 'C_CORPORATION', label: 'C Corporation' },
+  { value: 'S_CORPORATION', label: 'S Corporation' },
+  { value: 'B_CORPORATION', label: 'B Corporation' },
+  { value: 'NONPROFIT_CORPORATION', label: 'Nonprofit Corporation' },
+  { value: 'SINGLE_MEMBER_LLC', label: 'Single Member LLC' },
+  { value: 'MULTI_MEMBER_LLC', label: 'Multi Member LLC' },
+  { value: 'GENERAL_PARTNERSHIP', label: 'General Partnership' },
+  { value: 'LIMITED_PARTNERSHIP', label: 'Limited Partnership' },
+  { value: 'LIMITED_LIABILITY_PARTNERSHIP', label: 'Limited Liability Partnership' },
+  { value: 'REVOCABLE_TRUST', label: 'Revocable Trust' },
+  { value: 'IRREVOCABLE_TRUST', label: 'Irrevocable Trust' },
+  { value: 'LIVING_TRUST', label: 'Living Trust' },
+  { value: 'OTHER', label: 'Other' },
+] as const;
+
 // Regulation status options
 export const REGULATION_STATUSES = [
   { value: 'NON_REGULATED', label: 'Non-Regulated' },

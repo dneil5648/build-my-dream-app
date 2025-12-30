@@ -9,7 +9,8 @@ import { CreateIdentityRequest, PaxosAddress, PaxosIdentity } from '@/api/types'
 import { 
   INDUSTRY_SECTORS, 
   CIP_ID_TYPES, 
-  INSTITUTION_TYPES, 
+  INSTITUTION_TYPES,
+  INSTITUTION_SUB_TYPES,
   REGULATION_STATUSES, 
   TRADING_TYPES,
   ACCOUNT_PURPOSES,
@@ -617,15 +618,15 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Industry *</Label>
+                <Label>Business Sub-Type *</Label>
                 <Select value={bizSubType} onValueChange={setBizSubType}>
                   <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Select industry" />
+                    <SelectValue placeholder="Select sub-type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {INDUSTRY_SECTORS.map((sector) => (
-                      <SelectItem key={sector.value} value={sector.value}>
-                        {sector.label}
+                    {INSTITUTION_SUB_TYPES.map((subType) => (
+                      <SelectItem key={subType.value} value={subType.value}>
+                        {subType.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -962,8 +963,8 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                   <span className="text-foreground">{bizName}</span>
                   <span className="text-muted-foreground">Type:</span>
                   <span className="text-foreground">{INSTITUTION_TYPES.find(t => t.value === bizType)?.label}</span>
-                  <span className="text-muted-foreground">Industry:</span>
-                  <span className="text-foreground">{INDUSTRY_SECTORS.find(s => s.value === bizSubType)?.label}</span>
+                  <span className="text-muted-foreground">Sub-Type:</span>
+                  <span className="text-foreground">{INSTITUTION_SUB_TYPES.find(s => s.value === bizSubType)?.label}</span>
                   <span className="text-muted-foreground">Purpose:</span>
                   <span className="text-foreground">{ACCOUNT_PURPOSES.find(p => p.value === bizPurpose)?.label}</span>
                 </div>
