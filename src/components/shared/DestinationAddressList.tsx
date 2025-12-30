@@ -13,36 +13,33 @@ interface DestinationAddressListProps {
 
 const getNetworkLabel = (network: string): string => {
   const labels: Record<string, string> = {
-    BITCOIN: 'Bitcoin',
     ETHEREUM: 'Ethereum',
-    POLYGON: 'Polygon',
     SOLANA: 'Solana',
-    LITECOIN: 'Litecoin',
-    TRON: 'Tron',
+    STELLAR: 'Stellar',
+    BASE: 'Base',
+    POLYGON: 'Polygon',
   };
   return labels[network] || network;
 };
 
 const getNetworkColor = (network: string): string => {
   const colors: Record<string, string> = {
-    BITCOIN: 'bg-orange-500/20 text-orange-400',
     ETHEREUM: 'bg-blue-500/20 text-blue-400',
-    POLYGON: 'bg-purple-500/20 text-purple-400',
     SOLANA: 'bg-green-500/20 text-green-400',
-    LITECOIN: 'bg-gray-500/20 text-gray-400',
-    TRON: 'bg-red-500/20 text-red-400',
+    STELLAR: 'bg-cyan-500/20 text-cyan-400',
+    BASE: 'bg-indigo-500/20 text-indigo-400',
+    POLYGON: 'bg-purple-500/20 text-purple-400',
   };
   return colors[network] || 'bg-muted text-muted-foreground';
 };
 
 const getExplorerUrl = (network: string, address: string): string | null => {
   const explorers: Record<string, string> = {
-    BITCOIN: `https://blockstream.info/address/${address}`,
     ETHEREUM: `https://etherscan.io/address/${address}`,
-    POLYGON: `https://polygonscan.com/address/${address}`,
     SOLANA: `https://solscan.io/account/${address}`,
-    LITECOIN: `https://blockchair.com/litecoin/address/${address}`,
-    TRON: `https://tronscan.org/#/address/${address}`,
+    STELLAR: `https://stellarchain.io/accounts/${address}`,
+    BASE: `https://basescan.org/address/${address}`,
+    POLYGON: `https://polygonscan.com/address/${address}`,
   };
   return explorers[network] || null;
 };

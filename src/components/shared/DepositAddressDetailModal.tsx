@@ -13,25 +13,22 @@ interface DepositAddressDetailModalProps {
 
 const getNetworkLabel = (network: string): string => {
   const labels: Record<string, string> = {
-    BITCOIN: 'Bitcoin',
     ETHEREUM: 'Ethereum',
-    POLYGON: 'Polygon',
     SOLANA: 'Solana',
-    LITECOIN: 'Litecoin',
-    TRON: 'Tron',
-    LIGHTNING: 'Lightning',
+    STELLAR: 'Stellar',
+    BASE: 'Base',
+    POLYGON: 'Polygon',
   };
   return labels[network] || network;
 };
 
 const getExplorerUrl = (network: string, address: string): string | null => {
   const explorers: Record<string, string> = {
-    BITCOIN: `https://blockstream.info/address/${address}`,
     ETHEREUM: `https://etherscan.io/address/${address}`,
-    POLYGON: `https://polygonscan.com/address/${address}`,
     SOLANA: `https://solscan.io/account/${address}`,
-    LITECOIN: `https://blockchair.com/litecoin/address/${address}`,
-    TRON: `https://tronscan.org/#/address/${address}`,
+    STELLAR: `https://stellarchain.io/accounts/${address}`,
+    BASE: `https://basescan.org/address/${address}`,
+    POLYGON: `https://polygonscan.com/address/${address}`,
   };
   return explorers[network] || null;
 };

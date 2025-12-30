@@ -85,23 +85,22 @@ const CreateCryptoAddress: React.FC = () => {
     toast.success('Copied to clipboard');
   };
 
+  // Available networks: ETHEREUM, SOLANA, STELLAR, BASE, POLYGON
   const getNetworkOptions = (asset: string) => {
-    switch (asset) {
-      case 'BTC':
-        return [{ value: 'BITCOIN', label: 'Bitcoin Network' }];
-      case 'ETH':
-        return [{ value: 'ETHEREUM', label: 'Ethereum Network' }];
-      case 'USDC':
-        return [
-          { value: 'ETHEREUM', label: 'Ethereum Network' },
-          { value: 'POLYGON', label: 'Polygon Network' },
-          { value: 'SOLANA', label: 'Solana' },
-        ];
-      case 'USDP':
-        return [{ value: 'ETHEREUM', label: 'Ethereum Network' }];
-      default:
-        return [];
+    // All stablecoins can be on multiple networks
+    const allNetworks = [
+      { value: 'ETHEREUM', label: 'Ethereum' },
+      { value: 'SOLANA', label: 'Solana' },
+      { value: 'STELLAR', label: 'Stellar' },
+      { value: 'BASE', label: 'Base' },
+      { value: 'POLYGON', label: 'Polygon' },
+    ];
+    
+    // Return all networks for supported assets
+    if (['USDG', 'PYUSD', 'USDP', 'USDC'].includes(asset)) {
+      return allNetworks;
     }
+    return allNetworks;
   };
 
   const getDestinationTypeDescription = () => {
@@ -171,28 +170,28 @@ const CreateCryptoAddress: React.FC = () => {
                   <SelectValue placeholder="Select asset" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  <SelectItem value="BTC">
+                  <SelectItem value="USDG">
                     <div className="flex items-center gap-2">
-                      <AssetIcon asset="BTC" size="sm" />
-                      Bitcoin (BTC)
+                      <AssetIcon asset="USDG" size="sm" />
+                      Global Dollar (USDG)
                     </div>
                   </SelectItem>
-                  <SelectItem value="ETH">
+                  <SelectItem value="PYUSD">
                     <div className="flex items-center gap-2">
-                      <AssetIcon asset="ETH" size="sm" />
-                      Ethereum (ETH)
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="USDC">
-                    <div className="flex items-center gap-2">
-                      <AssetIcon asset="USDC" size="sm" />
-                      USD Coin (USDC)
+                      <AssetIcon asset="PYUSD" size="sm" />
+                      PayPal USD (PYUSD)
                     </div>
                   </SelectItem>
                   <SelectItem value="USDP">
                     <div className="flex items-center gap-2">
                       <AssetIcon asset="USDP" size="sm" />
                       Pax Dollar (USDP)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="USDC">
+                    <div className="flex items-center gap-2">
+                      <AssetIcon asset="USDC" size="sm" />
+                      USD Coin (USDC)
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -232,8 +231,9 @@ const CreateCryptoAddress: React.FC = () => {
                     <SelectItem value={formData.source_asset}>{formData.source_asset} (No conversion)</SelectItem>
                   )}
                   <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="BTC">Bitcoin (BTC)</SelectItem>
-                  <SelectItem value="ETH">Ethereum (ETH)</SelectItem>
+                  <SelectItem value="USDG">Global Dollar (USDG)</SelectItem>
+                  <SelectItem value="PYUSD">PayPal USD (PYUSD)</SelectItem>
+                  <SelectItem value="USDP">Pax Dollar (USDP)</SelectItem>
                   <SelectItem value="USDC">USD Coin (USDC)</SelectItem>
                 </SelectContent>
               </Select>

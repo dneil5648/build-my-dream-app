@@ -14,12 +14,11 @@ interface CreateDestinationAddressFormProps {
 }
 
 const CRYPTO_NETWORKS: { value: CryptoNetwork; label: string; addressHint: string }[] = [
-  { value: 'BITCOIN', label: 'Bitcoin', addressHint: 'bc1q... or 1... or 3...' },
   { value: 'ETHEREUM', label: 'Ethereum', addressHint: '0x...' },
-  { value: 'POLYGON', label: 'Polygon', addressHint: '0x...' },
   { value: 'SOLANA', label: 'Solana', addressHint: 'Base58 encoded' },
-  { value: 'LITECOIN', label: 'Litecoin', addressHint: 'L... or M... or ltc1...' },
-  { value: 'TRON', label: 'Tron', addressHint: 'T...' },
+  { value: 'STELLAR', label: 'Stellar', addressHint: 'G...' },
+  { value: 'BASE', label: 'Base', addressHint: '0x...' },
+  { value: 'POLYGON', label: 'Polygon', addressHint: '0x...' },
 ];
 
 export const CreateDestinationAddressForm: React.FC<CreateDestinationAddressFormProps> = ({
