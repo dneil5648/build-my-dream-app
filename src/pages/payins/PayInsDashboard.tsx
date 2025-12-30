@@ -26,14 +26,21 @@ const PayInsDashboard: React.FC = () => {
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [activeTab, setActiveTab] = useState('fiat');
 
-  const { data: instructionsResponse, isLoading: loadingInstructions } = useDepositInstructions();
-  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ limit: 5 });
+  const { data: instructionsResponse, isLoading: loadingInstructions } = useDepositInstructions(
+    selectedAccountId ? { account_id: selectedAccountId } : undefined
+  );
+  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ 
+    limit: 5,
+    account_id: selectedAccountId || undefined
+  });
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();
-  const { data: cryptoAddressesResponse, isLoading: loadingCryptoAddresses } = useCryptoAddresses();
+  const { data: cryptoAddressesResponse, isLoading: loadingCryptoAddresses } = useCryptoAddresses(
+    selectedAccountId ? { account_id: selectedAccountId } : undefined
+  );
 
   const instructions = instructionsResponse?.data || [];
   const transactions = (transactionsResponse?.data || []).filter(
