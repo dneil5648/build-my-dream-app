@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { CreateIdentityRequest, PaxosAddress } from '@/api/types';
+import { CreateIdentityRequest, PaxosAddress, PaxosIdentity } from '@/api/types';
 import { 
   INDUSTRY_SECTORS, 
   CIP_ID_TYPES, 
@@ -20,7 +20,7 @@ import {
 import { getModuleIdentityConfig } from '@/pages/config/ConfigPage';
 
 interface InstitutionOnboardingWizardProps {
-  onSubmit: (data: CreateIdentityRequest) => Promise<void>;
+  onSubmit: (data: CreateIdentityRequest) => Promise<PaxosIdentity | void>;
   isLoading?: boolean;
   onCancel?: () => void;
 }
@@ -124,11 +124,12 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
       return true;
     };
 
-    // Create representative identity first
+    // Step 1: Create representative (person) identity first
     const representativeData: CreateIdentityRequest = {
       person_details: {
         verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
         passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
+        passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
         last_name: repLastName,
         first_name: repFirstName || undefined,
         email: repEmail || undefined,
@@ -148,9 +149,15 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
       },
     };
 
-    await onSubmit(representativeData);
+    // Create person identity and get the returned ID
+    const personResult = await onSubmit(representativeData);
+    const personIdentityId = (personResult as PaxosIdentity)?.identity_id;
 
-    // Create institution identity
+    if (!personIdentityId) {
+      throw new Error('Failed to create representative identity');
+    }
+
+    // Step 2: Create institution identity with the person as a member
     const institutionData: CreateIdentityRequest = {
       institution_details: {
         name: bizName,
@@ -169,11 +176,18 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         regulation_status: bizRegulationStatus as any,
         trading_type: bizTradingType as any,
       },
-      institution_members: [],
+      institution_members: [{
+        identity_id: personIdentityId,
+        roles: ['BENEFICIAL_OWNER', 'ACCOUNT_OPENER'],
+        ownership: '100',
+        position: 'Authorized Representative',
+      }],
       customer_due_diligence: {
         industry_sector: bizIndustrySector || bizSubType,
         purpose_of_account: bizPurpose as any,
         source_of_funds: bizSourceOfFunds as any,
+        has_underlying_trust_structure: false,
+        has_nominee_shareholders: false,
       },
     };
 
