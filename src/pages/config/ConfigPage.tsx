@@ -131,8 +131,8 @@ const ConfigPage: React.FC = () => {
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
-  const institutionIdentities = identities.filter(i => i.identity_type === 'INSTITUTION');
-  const personIdentities = identities.filter(i => i.identity_type === 'INDIVIDUAL');
+  const institutionIdentities = identities.filter(i => i.identity_type?.toUpperCase() === 'INSTITUTION');
+  const personIdentities = identities.filter(i => i.identity_type?.toUpperCase() === 'INDIVIDUAL');
   const allValidIdentities = identities.filter(i => i.identity_id && i.identity_id.trim() !== '');
 
   // Load saved configs on mount
@@ -624,14 +624,14 @@ const ConfigPage: React.FC = () => {
                     {allValidIdentities.map((identity) => (
                       <SelectItem key={identity.identity_id} value={identity.identity_id}>
                         <span className="flex items-center gap-2">
-                          {identity.identity_type === 'INSTITUTION' ? (
+                          {identity.identity_type?.toUpperCase() === 'INSTITUTION' ? (
                             <Building2 className="h-4 w-4" />
                           ) : (
                             <User className="h-4 w-4" />
                           )}
                           {identity.name}
                           <span className="text-xs text-muted-foreground">
-                            ({identity.identity_type === 'INSTITUTION' ? 'Institution' : 'Person'})
+                            ({identity.identity_type?.toUpperCase() === 'INSTITUTION' ? 'Institution' : 'Person'})
                           </span>
                         </span>
                       </SelectItem>
@@ -682,14 +682,14 @@ const ConfigPage: React.FC = () => {
                     {allValidIdentities.map((identity) => (
                       <SelectItem key={identity.identity_id} value={identity.identity_id}>
                         <span className="flex items-center gap-2">
-                          {identity.identity_type === 'INSTITUTION' ? (
+                          {identity.identity_type?.toUpperCase() === 'INSTITUTION' ? (
                             <Building2 className="h-4 w-4" />
                           ) : (
                             <User className="h-4 w-4" />
                           )}
                           {identity.name}
                           <span className="text-xs text-muted-foreground">
-                            ({identity.identity_type === 'INSTITUTION' ? 'Institution' : 'Person'})
+                            ({identity.identity_type?.toUpperCase() === 'INSTITUTION' ? 'Institution' : 'Person'})
                           </span>
                         </span>
                       </SelectItem>

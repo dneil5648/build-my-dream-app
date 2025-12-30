@@ -116,14 +116,14 @@ const TreasuryDashboard: React.FC = () => {
             />
             <StatCard
               title="Institutions"
-              value={loadingIdentities ? '...' : identities.filter(i => i.identity_type === 'INSTITUTION').length.toString()}
+              value={loadingIdentities ? '...' : identities.filter(i => i.identity_type?.toUpperCase() === 'INSTITUTION').length.toString()}
               change="Multi-party entities"
               changeType="neutral"
               icon={Building2}
             />
             <StatCard
               title="Individuals"
-              value={loadingIdentities ? '...' : identities.filter(i => i.identity_type === 'INDIVIDUAL').length.toString()}
+              value={loadingIdentities ? '...' : identities.filter(i => i.identity_type?.toUpperCase() === 'INDIVIDUAL').length.toString()}
               change="Single-party entities"
               changeType="neutral"
               icon={Users}

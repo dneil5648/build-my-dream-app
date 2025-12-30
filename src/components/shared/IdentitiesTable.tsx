@@ -67,11 +67,11 @@ export const IdentitiesTable: React.FC<IdentitiesTableProps> = ({
             >
               <TableCell className="w-12">
                 <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                  identity.identity_type === 'INDIVIDUAL' 
+                  identity.identity_type?.toUpperCase() === 'INDIVIDUAL' 
                     ? 'bg-module-payins/10' 
                     : 'bg-module-treasury/10'
                 }`}>
-                  {identity.identity_type === 'INDIVIDUAL' ? (
+                  {identity.identity_type?.toUpperCase() === 'INDIVIDUAL' ? (
                     <User className="h-4 w-4 text-module-payins" />
                   ) : (
                     <Building className="h-4 w-4 text-module-treasury" />

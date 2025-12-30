@@ -83,7 +83,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
   const [useExistingIndividual, setUseExistingIndividual] = useState(false);
   const [selectedExistingId, setSelectedExistingId] = useState<string>('');
 
-  const individualIdentities = existingIdentities.filter(i => i.identity_type === 'INDIVIDUAL');
+  const individualIdentities = existingIdentities.filter(i => i.identity_type?.toUpperCase() === 'INDIVIDUAL');
 
   const getSteps = (): Step[] => {
     if (walletType === 'personal') {
