@@ -10,13 +10,12 @@ import { CreateAccountForm } from '@/components/shared/CreateAccountForm';
 import { CryptoAddressList } from '@/components/shared/CryptoAddressList';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useDepositInstructions } from '@/hooks/useFiat';
+
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
 import { useCryptoAddresses } from '@/hooks/useCrypto';
-import { FiatDepositInstructions, Transaction, CreateIdentityRequest, CreateAccountRequest, PaxosIdentity } from '@/api/types';
+import { Transaction, CreateIdentityRequest, CreateAccountRequest, PaxosIdentity } from '@/api/types';
 import { getModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
 
@@ -24,11 +23,6 @@ const PayInsDashboard: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
-  const [activeTab, setActiveTab] = useState('fiat');
-
-  const { data: instructionsResponse, isLoading: loadingInstructions } = useDepositInstructions(
-    selectedAccountId ? { account_id: selectedAccountId } : undefined
-  );
   const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ 
     limit: 5,
     account_id: selectedAccountId || undefined
@@ -42,7 +36,6 @@ const PayInsDashboard: React.FC = () => {
     selectedAccountId ? { account_id: selectedAccountId } : undefined
   );
 
-  const instructions = instructionsResponse?.data || [];
   const transactions = (transactionsResponse?.data || []).filter(
     (tx: Transaction) => tx.type === 'deposit'
   );
@@ -173,12 +166,6 @@ const PayInsDashboard: React.FC = () => {
                 Crypto Address
               </Button>
             </Link>
-            <Link to="/app/pay-ins/create">
-              <Button size="sm" className="bg-module-payins hover:bg-module-payins/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Fiat Instructions
-              </Button>
-            </Link>
           </div>
         </div>
       )}
@@ -211,104 +198,47 @@ const PayInsDashboard: React.FC = () => {
               icon={CheckCircle2}
             />
             <StatCard
-              title="Active Instructions"
-              value={loadingInstructions ? '...' : instructions.length.toString()}
+              title="Crypto Addresses"
+              value={loadingCryptoAddresses ? '...' : cryptoAddresses.length.toString()}
               change="All networks"
               changeType="neutral"
-              icon={AlertCircle}
+              icon={Bitcoin}
             />
           </div>
 
-          {/* Deposit Instructions - Tabbed */}
+          {/* Crypto Addresses */}
           <div className="glass rounded-xl p-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <div className="flex items-center justify-between mb-6">
-                <TabsList className="bg-secondary">
-                  <TabsTrigger value="fiat">Fiat Instructions</TabsTrigger>
-                  <TabsTrigger value="crypto">Crypto Addresses</TabsTrigger>
-                </TabsList>
-                {institutionIdentity && (
-                  <Link 
-                    to={activeTab === 'fiat' ? '/app/pay-ins/create' : '/app/pay-ins/crypto-address'} 
-                    className="text-sm text-module-payins hover:underline"
-                  >
-                    Create New
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-semibold text-foreground">Crypto Deposit Addresses</h3>
+              {institutionIdentity && (
+                <Link 
+                  to="/app/pay-ins/crypto-address" 
+                  className="text-sm text-module-payins hover:underline"
+                >
+                  Create New
+                </Link>
+              )}
+            </div>
+
+            {cryptoAddresses.length === 0 && !loadingCryptoAddresses ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Bitcoin className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No crypto deposit addresses found.</p>
+                {institutionIdentity ? (
+                  <Link to="/app/pay-ins/crypto-address" className="text-module-payins hover:underline">
+                    Create your first address
                   </Link>
+                ) : (
+                  <p className="text-sm">Complete business registration to get started</p>
                 )}
               </div>
-
-              <TabsContent value="fiat" className="mt-0">
-                {loadingInstructions ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : instructions.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <ArrowDownToLine className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No fiat deposit instructions found.</p>
-                    {institutionIdentity ? (
-                      <Link to="/app/pay-ins/create" className="text-module-payins hover:underline">
-                        Create your first instruction
-                      </Link>
-                    ) : (
-                      <p className="text-sm">Complete business registration to get started</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {instructions.map((instruction: FiatDepositInstructions) => (
-                      <div 
-                        key={instruction.id}
-                        className="p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payins/50 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-module-payins/10 flex items-center justify-center">
-                              <ArrowDownToLine className="h-5 w-5 text-module-payins" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-foreground">{instruction.network}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Type: {instruction.account_type} • ID: {instruction.deposit_instructions_id?.slice(0, 8)}...
-                              </p>
-                            </div>
-                          </div>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            instruction.status === 'active' 
-                              ? 'bg-success/20 text-success' 
-                              : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {instruction.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="crypto" className="mt-0">
-                {cryptoAddresses.length === 0 && !loadingCryptoAddresses ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Bitcoin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No crypto deposit addresses found.</p>
-                    {institutionIdentity ? (
-                      <Link to="/app/pay-ins/crypto-address" className="text-module-payins hover:underline">
-                        Create your first address
-                      </Link>
-                    ) : (
-                      <p className="text-sm">Complete business registration to get started</p>
-                    )}
-                  </div>
-                ) : (
-                  <CryptoAddressList 
-                    addresses={cryptoAddresses} 
-                    isLoading={loadingCryptoAddresses}
-                    emptyMessage="No crypto deposit addresses for this account"
-                  />
-                )}
-              </TabsContent>
-            </Tabs>
+            ) : (
+              <CryptoAddressList 
+                addresses={cryptoAddresses} 
+                isLoading={loadingCryptoAddresses}
+                emptyMessage="No crypto deposit addresses for this account"
+              />
+            )}
           </div>
 
           {/* Recent Deposits */}
