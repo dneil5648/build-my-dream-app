@@ -120,6 +120,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         person_details: {
           verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
           passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
+          passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
           first_name: firstName || undefined,
           last_name: lastName,
           email: email || undefined,
