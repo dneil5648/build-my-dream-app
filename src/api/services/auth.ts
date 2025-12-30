@@ -1,4 +1,4 @@
-import { apiClient, setAuthToken, clearAuthToken } from '../client';
+import { apiClient, setAuthToken, clearAuthToken, getApiConfig } from '../client';
 import { 
   User, 
   UserRegistrationRequest, 
@@ -18,6 +18,8 @@ export const authService = {
     formData.append('password', credentials.password);
 
     const token = localStorage.getItem('auth_token');
+    const config = getApiConfig();
+    const baseUrl = config?.baseUrl || '';
 
     const headers: HeadersInit = {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -28,8 +30,7 @@ export const authService = {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
-    // Use relative URL to leverage Vite proxy in development
-    const fetchResponse = await fetch('/users/login', {
+    const fetchResponse = await fetch(`${baseUrl}/users/login`, {
       method: 'POST',
       headers,
       body: formData.toString(),
