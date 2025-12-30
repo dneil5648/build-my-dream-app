@@ -194,8 +194,10 @@ export interface CreateCryptoAddressRequest {
   network: CryptoNetwork;
   source_asset: string;
   destination_asset?: string;
+  destination_type?: 'ACCOUNT' | 'EXTERNAL_WALLET' | 'FIAT_ACCOUNT';
+  destination_account_id?: string;
+  destination_address?: string;
   fiat_account_id?: string;
-  crypto_address_id?: string;
 }
 
 export interface CryptoAddress {
@@ -204,6 +206,11 @@ export interface CryptoAddress {
   wallet_address: string;
   paxos_account_id: string;
   user_id: string;
+  source_asset?: string;
+  destination_asset?: string;
+  destination_type?: string;
+  created_at?: string;
+  status?: string;
 }
 
 export interface CryptoWithdrawalFeeRequest {
