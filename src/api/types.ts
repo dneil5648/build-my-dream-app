@@ -252,9 +252,14 @@ export interface PaxosIdentity {
 
 // ============= Account Types =============
 
-// Base Account Request payload
-export interface AccountRequestPayload {
+// Inner account object within request
+export interface AccountInnerPayload {
   identity_id: string;
+}
+
+// Account request payload with nested account object
+export interface AccountRequestPayload {
+  account: AccountInnerPayload;
   description?: string;
 }
 

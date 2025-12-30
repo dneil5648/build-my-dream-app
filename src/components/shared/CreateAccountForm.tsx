@@ -30,7 +30,9 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
 
     await onSubmit({
       account_request: {
-        identity_id: identityId,
+        account: {
+          identity_id: identityId,
+        },
         description: description || undefined,
       },
       module,
