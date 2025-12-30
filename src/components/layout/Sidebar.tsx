@@ -14,6 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import paxosLogo from '@/assets/paxos-logo.svg';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -44,11 +45,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-primary/20">
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">P</span>
-              </div>
-              <span className="text-lg font-semibold text-sidebar-foreground">Paxos</span>
+            <div className="flex items-center">
+              <img src={paxosLogo} alt="Paxos" className="h-8" />
             </div>
           )}
           {collapsed && (
