@@ -80,6 +80,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
   const [bizIndustrySector, setBizIndustrySector] = useState('');
   const [bizPurpose, setBizPurpose] = useState('');
   const [bizSourceOfFunds, setBizSourceOfFunds] = useState('');
+  const [bizSourceOfWealth, setBizSourceOfWealth] = useState('');
 
   // Representative Member Details
   const [repRoles, setRepRoles] = useState<string[]>(['BENEFICIAL_OWNER']);
@@ -206,10 +207,15 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         ownership: repOwnership || '100',
         position: repPosition || 'Authorized Representative',
       }],
+      tax_details: [{
+        tax_payer_id: bizCipId,
+        tax_payer_country: 'USA',
+      }],
       customer_due_diligence: {
         industry_sector: bizIndustrySector || bizSubType,
         purpose_of_account: bizPurpose as any,
         source_of_funds: bizSourceOfFunds as any,
+        source_of_wealth: bizSourceOfWealth as any,
         has_underlying_trust_structure: false,
         has_nominee_shareholders: false,
       },
@@ -235,7 +241,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         return !!(bizAddress.address1 && bizAddress.city && bizAddress.province && bizAddress.zip_code && bizAddress.country);
       case 'biz-details':
         // Industry sector and CDD required for institutions
-        return !!((bizIndustrySector || bizSubType) && bizPurpose && bizSourceOfFunds);
+        return !!((bizIndustrySector || bizSubType) && bizPurpose && bizSourceOfFunds && bizSourceOfWealth && repRoles.length > 0);
       case 'review':
         return true;
       default:
@@ -834,6 +840,22 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                     </SelectTrigger>
                     <SelectContent>
                       {SOURCE_OF_FUNDS.map((source) => (
+                        <SelectItem key={source.value} value={source.value}>
+                          {source.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Source of Wealth *</Label>
+                  <Select value={bizSourceOfWealth} onValueChange={setBizSourceOfWealth}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select source of wealth" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SOURCE_OF_WEALTH.map((source) => (
                         <SelectItem key={source.value} value={source.value}>
                           {source.label}
                         </SelectItem>
