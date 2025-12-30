@@ -259,7 +259,9 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
 
       await onCreateWallet({
         account_request: {
-          identity_id: identityIdForWallet || '',
+          account: {
+            identity_id: identityIdForWallet || '',
+          },
         },
         module,
       });
