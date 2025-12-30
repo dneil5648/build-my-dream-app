@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette, Building2, ArrowDownToLine, ArrowUpFromLine, UserCheck } from 'lucide-react';
+import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette, Building2, ArrowDownToLine, ArrowUpFromLine, UserCheck, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,8 +41,10 @@ export interface WhiteLabelConfig {
 }
 
 export interface ModuleIdentityConfig {
-  payinsIdentityId: string | null; // null = force new, 'none' = no default, or identity_id
+  payinsIdentityId: string | null; // null = force new, or identity_id
   payoutsIdentityId: string | null;
+  cryptoWalletIdentityId: string | null; // For Crypto Wallet module
+  whiteLabelIdentityId: string | null; // For White Label Wallet module
   requireOnboarding: boolean; // if true, forces new identity creation
   idvVendor: string | null; // IDV vendor selection
 }
@@ -80,7 +82,7 @@ export const saveWhiteLabelConfig = (config: WhiteLabelConfig): void => {
 
 export const getModuleIdentityConfig = (): ModuleIdentityConfig => {
   const saved = localStorage.getItem('moduleIdentityConfig');
-  return saved ? JSON.parse(saved) : { payinsIdentityId: null, payoutsIdentityId: null, requireOnboarding: false, idvVendor: null };
+  return saved ? JSON.parse(saved) : { payinsIdentityId: null, payoutsIdentityId: null, cryptoWalletIdentityId: null, whiteLabelIdentityId: null, requireOnboarding: false, idvVendor: null };
 };
 
 export const saveModuleIdentityConfig = (config: ModuleIdentityConfig): void => {
@@ -115,6 +117,8 @@ const ConfigPage: React.FC = () => {
   const [moduleIdentityConfig, setModuleIdentityConfig] = useState<ModuleIdentityConfig>({
     payinsIdentityId: null,
     payoutsIdentityId: null,
+    cryptoWalletIdentityId: null,
+    whiteLabelIdentityId: null,
     requireOnboarding: false,
     idvVendor: null,
   });
@@ -128,6 +132,8 @@ const ConfigPage: React.FC = () => {
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const institutionIdentities = identities.filter(i => i.identity_type === 'INSTITUTION');
+  const personIdentities = identities.filter(i => i.identity_type === 'INDIVIDUAL');
+  const allValidIdentities = identities.filter(i => i.identity_id && i.identity_id.trim() !== '');
 
   // Load saved configs on mount
   useEffect(() => {
@@ -578,6 +584,122 @@ const ConfigPage: React.FC = () => {
                   {moduleIdentityConfig.idvVendor 
                     ? `Using ${moduleIdentityConfig.idvVendor.replace(/_/g, ' ')} for identity verification` 
                     : 'Select a vendor to enable identity verification'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Crypto Wallet Settings */}
+          <div className="glass rounded-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-module-crypto/10 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-module-crypto" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Crypto Wallet Module</h3>
+                <p className="text-sm text-muted-foreground">Configure identity settings for crypto wallet users</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Default Identity (Person or Institution)</Label>
+                <Select 
+                  value={moduleIdentityConfig.cryptoWalletIdentityId || 'force-new'} 
+                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                    ...prev, 
+                    cryptoWalletIdentityId: value === 'force-new' ? null : value 
+                  }))}
+                >
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select identity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="force-new">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Require new registration
+                      </span>
+                    </SelectItem>
+                    {allValidIdentities.map((identity) => (
+                      <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                        <span className="flex items-center gap-2">
+                          {identity.identity_type === 'INSTITUTION' ? (
+                            <Building2 className="h-4 w-4" />
+                          ) : (
+                            <User className="h-4 w-4" />
+                          )}
+                          {identity.name}
+                          <span className="text-xs text-muted-foreground">
+                            ({identity.identity_type === 'INSTITUTION' ? 'Institution' : 'Person'})
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {moduleIdentityConfig.cryptoWalletIdentityId 
+                    ? 'Users will use this identity by default' 
+                    : 'Users must complete registration to use Crypto Wallet'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* White Label Wallet Settings */}
+          <div className="glass rounded-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-module-whitelabel/10 flex items-center justify-center">
+                <Palette className="h-5 w-5 text-module-whitelabel" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">White Label Wallet Module</h3>
+                <p className="text-sm text-muted-foreground">Configure identity settings for white label wallet users</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Default Identity (Person or Institution)</Label>
+                <Select 
+                  value={moduleIdentityConfig.whiteLabelIdentityId || 'force-new'} 
+                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                    ...prev, 
+                    whiteLabelIdentityId: value === 'force-new' ? null : value 
+                  }))}
+                >
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select identity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="force-new">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Require new registration
+                      </span>
+                    </SelectItem>
+                    {allValidIdentities.map((identity) => (
+                      <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                        <span className="flex items-center gap-2">
+                          {identity.identity_type === 'INSTITUTION' ? (
+                            <Building2 className="h-4 w-4" />
+                          ) : (
+                            <User className="h-4 w-4" />
+                          )}
+                          {identity.name}
+                          <span className="text-xs text-muted-foreground">
+                            ({identity.identity_type === 'INSTITUTION' ? 'Institution' : 'Person'})
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {moduleIdentityConfig.whiteLabelIdentityId 
+                    ? 'Users will use this identity by default' 
+                    : 'Users must complete registration to use White Label Wallet'}
                 </p>
               </div>
             </div>
