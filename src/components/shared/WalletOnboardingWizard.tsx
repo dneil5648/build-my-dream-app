@@ -129,6 +129,16 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
       const moduleConfig = getModuleIdentityConfig();
       const idvVendor = moduleConfig.idvVendor;
 
+      // Helper to validate SSN format (XXX-XX-XXXX or XXXXXXXXX)
+      const isValidSsn = (ssn: string) => /^\d{3}-?\d{2}-?\d{4}$/.test(ssn);
+      
+      // Only include cip_id if it's valid for the selected type
+      const shouldIncludeCipId = () => {
+        if (!cipId) return false;
+        if (cipIdType === 'SSN' && !isValidSsn(cipId)) return false;
+        return true;
+      };
+
       let identityIdForWallet: string | undefined;
 
       if (walletType === 'personal') {
@@ -144,9 +154,9 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
               email: email || undefined,
               phone_number: phone || undefined,
               date_of_birth: dateOfBirth || undefined,
-              cip_id: cipId || undefined,
-              cip_id_type: cipId ? cipIdType as any : undefined,
-              cip_id_country: cipId ? nationality : undefined,
+              cip_id: shouldIncludeCipId() ? cipId : undefined,
+              cip_id_type: shouldIncludeCipId() ? cipIdType as any : undefined,
+              cip_id_country: shouldIncludeCipId() ? nationality : undefined,
               nationality: nationality || undefined,
               address: individualAddress,
             },
@@ -175,9 +185,9 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
               email: email || undefined,
               phone_number: phone || undefined,
               date_of_birth: dateOfBirth || undefined,
-              cip_id: cipId || undefined,
-              cip_id_type: cipId ? cipIdType as any : undefined,
-              cip_id_country: cipId ? nationality : undefined,
+              cip_id: shouldIncludeCipId() ? cipId : undefined,
+              cip_id_type: shouldIncludeCipId() ? cipIdType as any : undefined,
+              cip_id_country: shouldIncludeCipId() ? nationality : undefined,
               nationality: nationality || undefined,
               address: individualAddress,
             },
@@ -204,6 +214,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
             cip_id_country: 'USA',
             govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : new Date().toISOString(),
             business_address: bizAddress,
+            incorporation_address: bizAddress, // Required by API
             regulation_status: 'NON_REGULATED',
             trading_type: 'PRIVATE',
           },
