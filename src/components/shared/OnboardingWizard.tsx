@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { User, Building2, ArrowRight, ArrowLeft, Loader2, Check, Shield, AlertCircle, MapPin } from 'lucide-react';
+import { User, Building2, ArrowRight, ArrowLeft, Loader2, Check, Shield, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreateIdentityRequest, IdentityType, PaxosAddress } from '@/api/types';
+import { INDUSTRY_SECTORS, CIP_ID_TYPES, INSTITUTION_TYPES } from '@/lib/constants';
 
 interface OnboardingWizardProps {
   onSubmit: (data: CreateIdentityRequest) => Promise<void>;
@@ -31,26 +32,26 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const [step, setStep] = useState<Step>('type');
   const [identityType, setIdentityType] = useState<IdentityType | null>(null);
 
-  // Individual (Person) fields
+  // Individual (Person) fields - only last_name is required per API
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [cipId, setCipId] = useState('');
-  const [cipIdType, setCipIdType] = useState<'SSN' | 'ITIN' | 'PASSPORT' | 'ID_CARD' | 'DRIVING_LICENSE'>('SSN');
+  const [cipIdType, setCipIdType] = useState<string>('SSN');
   const [nationality, setNationality] = useState('USA');
 
-  // Institution fields
+  // Institution fields - all required per API
   const [bizName, setBizName] = useState('');
   const [bizEmail, setBizEmail] = useState('');
   const [bizPhone, setBizPhone] = useState('');
-  const [bizType, setBizType] = useState<'CORPORATION' | 'LLC' | 'PARTNERSHIP' | 'TRUST'>('LLC');
+  const [bizType, setBizType] = useState<string>('LLC');
   const [bizSubType, setBizSubType] = useState('');
   const [bizCipId, setBizCipId] = useState('');
   const [bizGovtRegDate, setBizGovtRegDate] = useState('');
 
-  // Address
+  // Address - required for both
   const [address, setAddress] = useState<PaxosAddress>(emptyAddress);
 
   const steps: Step[] = ['type', 'details', 'address', 'review'];
@@ -84,6 +85,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     if (!identityType) return;
 
     if (identityType === 'INDIVIDUAL') {
+      // Person identity - only verifier_type, last_name, and address are required
       const data: CreateIdentityRequest = {
         person_details: {
           verifier_type: 'PAXOS',
@@ -93,9 +95,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           phone_number: phone || undefined,
           date_of_birth: dateOfBirth || undefined,
           cip_id: cipId || undefined,
-          cip_id_type: cipIdType,
-          cip_id_country: nationality,
-          nationality: nationality,
+          cip_id_type: cipId ? cipIdType as any : undefined,
+          cip_id_country: cipId ? nationality : undefined,
+          nationality: nationality || undefined,
           address: address,
         },
         customer_due_diligence: {
@@ -104,12 +106,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
       };
       await onSubmit(data);
     } else {
+      // Institution identity - many required fields
       const data: CreateIdentityRequest = {
         institution_details: {
           name: bizName,
           email: bizEmail,
           phone_number: bizPhone,
-          institution_type: bizType,
+          institution_type: bizType as any,
           institution_sub_type: bizSubType,
           cip_id: bizCipId,
           cip_id_type: 'EIN',
@@ -135,11 +138,14 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         return identityType !== null;
       case 'details':
         if (identityType === 'INDIVIDUAL') {
-          return !!(lastName && email && phone && dateOfBirth && cipId && nationality);
+          // Only last_name is required for person per API spec
+          return !!lastName;
         }
+        // Institution requires all these fields
         return !!(bizName && bizEmail && bizPhone && bizSubType && bizCipId && bizGovtRegDate);
       case 'address':
-        return !!(address.address1 && address.city && address.province && address.zip_code);
+        // Address is required with all sub-fields except address2
+        return !!(address.address1 && address.city && address.province && address.zip_code && address.country);
       case 'review':
         return true;
       default:
@@ -254,7 +260,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Email *</Label>
+                <Label>Email</Label>
                 <Input
                   type="email"
                   value={email}
@@ -264,7 +270,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label>Phone *</Label>
+                <Label>Phone</Label>
                 <Input
                   type="tel"
                   value={phone}
@@ -276,7 +282,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Date of Birth *</Label>
+              <Label>Date of Birth</Label>
               <Input
                 type="date"
                 value={dateOfBirth}
@@ -288,12 +294,12 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             <div className="pt-4 border-t border-border">
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="h-4 w-4 text-primary" />
-                <span className="font-medium text-foreground">Identity Verification</span>
+                <span className="font-medium text-foreground">Identity Verification (Optional)</span>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Tax ID / SSN *</Label>
+                  <Label>ID Number</Label>
                   <Input
                     value={cipId}
                     onChange={(e) => setCipId(e.target.value)}
@@ -302,25 +308,25 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>ID Type *</Label>
-                  <Select value={cipIdType} onValueChange={(v: any) => setCipIdType(v)}>
+                  <Label>ID Type</Label>
+                  <Select value={cipIdType} onValueChange={setCipIdType}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SSN">SSN</SelectItem>
-                      <SelectItem value="ITIN">ITIN</SelectItem>
-                      <SelectItem value="PASSPORT">Passport</SelectItem>
-                      <SelectItem value="ID_CARD">ID Card</SelectItem>
-                      <SelectItem value="DRIVING_LICENSE">Driver's License</SelectItem>
+                      {CIP_ID_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Nationality *</Label>
+                  <Label>Nationality</Label>
                   <Input
                     value={nationality}
-                    onChange={(e) => setNationality(e.target.value)}
+                    onChange={(e) => setNationality(e.target.value.toUpperCase())}
                     placeholder="USA"
                     maxLength={3}
                     className="bg-secondary border-border"
@@ -341,15 +347,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               <div>
                 <h3 className="text-lg font-semibold text-foreground">Business Information</h3>
                 <p className="text-sm text-muted-foreground">Organization details and registration</p>
-              </div>
-            </div>
-
-            <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
-              <div className="flex gap-2">
-                <AlertCircle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-muted-foreground">
-                  Institutions require at least one authorized representative. You'll need to add members after creation.
-                </p>
               </div>
             </div>
 
@@ -389,26 +386,33 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Business Type *</Label>
-                <Select value={bizType} onValueChange={(v: any) => setBizType(v)}>
+                <Select value={bizType} onValueChange={setBizType}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="LLC">LLC</SelectItem>
-                    <SelectItem value="CORPORATION">Corporation</SelectItem>
-                    <SelectItem value="PARTNERSHIP">Partnership</SelectItem>
-                    <SelectItem value="TRUST">Trust</SelectItem>
+                    {INSTITUTION_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Industry *</Label>
-                <Input
-                  value={bizSubType}
-                  onChange={(e) => setBizSubType(e.target.value)}
-                  placeholder="e.g., Technology, Retail"
-                  className="bg-secondary border-border"
-                />
+                <Select value={bizSubType} onValueChange={setBizSubType}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDUSTRY_SECTORS.map((sector) => (
+                      <SelectItem key={sector.value} value={sector.value}>
+                        {sector.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -488,7 +492,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label>State *</Label>
+                <Label>State/Province *</Label>
                 <Input
                   value={address.province}
                   onChange={(e) => setAddress({ ...address, province: e.target.value })}
@@ -497,7 +501,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label>ZIP *</Label>
+                <Label>ZIP/Postal *</Label>
                 <Input
                   value={address.zip_code}
                   onChange={(e) => setAddress({ ...address, zip_code: e.target.value })}
@@ -511,7 +515,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               <Label>Country *</Label>
               <Input
                 value={address.country}
-                onChange={(e) => setAddress({ ...address, country: e.target.value })}
+                onChange={(e) => setAddress({ ...address, country: e.target.value.toUpperCase() })}
                 placeholder="USA"
                 maxLength={3}
                 className="bg-secondary border-border"
@@ -547,21 +551,33 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <span className="text-muted-foreground">Name:</span>
                     <span className="text-foreground">{firstName} {lastName}</span>
-                    <span className="text-muted-foreground">Email:</span>
-                    <span className="text-foreground">{email}</span>
-                    <span className="text-muted-foreground">Phone:</span>
-                    <span className="text-foreground">{phone}</span>
-                    <span className="text-muted-foreground">Nationality:</span>
-                    <span className="text-foreground">{nationality}</span>
+                    {email && (
+                      <>
+                        <span className="text-muted-foreground">Email:</span>
+                        <span className="text-foreground">{email}</span>
+                      </>
+                    )}
+                    {phone && (
+                      <>
+                        <span className="text-muted-foreground">Phone:</span>
+                        <span className="text-foreground">{phone}</span>
+                      </>
+                    )}
+                    {nationality && (
+                      <>
+                        <span className="text-muted-foreground">Nationality:</span>
+                        <span className="text-foreground">{nationality}</span>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <span className="text-muted-foreground">Legal Name:</span>
                     <span className="text-foreground">{bizName}</span>
                     <span className="text-muted-foreground">Type:</span>
-                    <span className="text-foreground">{bizType}</span>
+                    <span className="text-foreground">{INSTITUTION_TYPES.find(t => t.value === bizType)?.label}</span>
                     <span className="text-muted-foreground">Industry:</span>
-                    <span className="text-foreground">{bizSubType}</span>
+                    <span className="text-foreground">{INDUSTRY_SECTORS.find(s => s.value === bizSubType)?.label}</span>
                     <span className="text-muted-foreground">Email:</span>
                     <span className="text-foreground">{bizEmail}</span>
                   </div>
