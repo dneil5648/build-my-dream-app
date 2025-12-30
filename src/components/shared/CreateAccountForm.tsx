@@ -1,0 +1,95 @@
+import React, { useState } from 'react';
+import { Building2, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { PaxosIdentity, CreateAccountRequest } from '@/api/types';
+
+interface CreateAccountFormProps {
+  identities: PaxosIdentity[];
+  onSubmit: (data: CreateAccountRequest) => Promise<void>;
+  isLoading?: boolean;
+}
+
+export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
+  identities,
+  onSubmit,
+  isLoading,
+}) => {
+  const [identityId, setIdentityId] = useState('');
+  const [createProfile, setCreateProfile] = useState(true);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!identityId) return;
+
+    await onSubmit({
+      identity_id: identityId,
+      create_profile: createProfile,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <Label>Select Identity *</Label>
+        {identities.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground bg-secondary/50 rounded-lg">
+            <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>No identities available</p>
+            <p className="text-sm">Create an identity first</p>
+          </div>
+        ) : (
+          <Select value={identityId} onValueChange={setIdentityId}>
+            <SelectTrigger className="bg-secondary border-border">
+              <SelectValue placeholder="Select an identity" />
+            </SelectTrigger>
+            <SelectContent>
+              {identities.map((identity) => (
+                <SelectItem key={identity.id} value={identity.identity_id}>
+                  <div className="flex items-center gap-2">
+                    <span>{identity.name}</span>
+                    <span className="text-muted-foreground text-xs">
+                      ({identity.identity_type})
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border">
+        <div>
+          <Label htmlFor="create-profile">Create Profile</Label>
+          <p className="text-sm text-muted-foreground">
+            Automatically create a Paxos profile for this account
+          </p>
+        </div>
+        <Switch
+          id="create-profile"
+          checked={createProfile}
+          onCheckedChange={setCreateProfile}
+        />
+      </div>
+
+      <Button 
+        type="submit" 
+        disabled={isLoading || !identityId} 
+        className="w-full bg-primary hover:bg-primary/90"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Creating...
+          </>
+        ) : (
+          'Create Account'
+        )}
+      </Button>
+    </form>
+  );
+};

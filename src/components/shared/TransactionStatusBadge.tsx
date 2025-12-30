@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
-type TransactionStatus = 'pending' | 'processing' | 'completed' | 'failed';
+import { TransactionStatus } from '@/api/types';
 
 interface TransactionStatusBadgeProps {
   status: TransactionStatus;
@@ -13,6 +13,7 @@ const statusStyles: Record<TransactionStatus, string> = {
   processing: 'bg-primary/20 text-primary',
   completed: 'bg-success/20 text-success',
   failed: 'bg-destructive/20 text-destructive',
+  cancelled: 'bg-muted text-muted-foreground',
 };
 
 const statusLabels: Record<TransactionStatus, string> = {
@@ -20,6 +21,7 @@ const statusLabels: Record<TransactionStatus, string> = {
   processing: 'Processing',
   completed: 'Completed',
   failed: 'Failed',
+  cancelled: 'Cancelled',
 };
 
 export const TransactionStatusBadge: React.FC<TransactionStatusBadgeProps> = ({ status, className }) => {
@@ -34,7 +36,8 @@ export const TransactionStatusBadge: React.FC<TransactionStatusBadgeProps> = ({ 
         status === 'pending' && "bg-warning",
         status === 'processing' && "bg-primary animate-pulse",
         status === 'completed' && "bg-success",
-        status === 'failed' && "bg-destructive"
+        status === 'failed' && "bg-destructive",
+        status === 'cancelled' && "bg-muted-foreground"
       )} />
       {statusLabels[status]}
     </span>
