@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette } from 'lucide-react';
+import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette, Building2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,12 @@ export interface WhiteLabelConfig {
   assetMappings: AssetMapping[];
 }
 
+export interface ModuleIdentityConfig {
+  payinsIdentityId: string | null; // null = force new, 'none' = no default, or identity_id
+  payoutsIdentityId: string | null;
+  requireOnboarding: boolean; // if true, forces new identity creation
+}
+
 export const getWhiteLabelConfig = (): WhiteLabelConfig | null => {
   const saved = localStorage.getItem('whiteLabelConfig');
   return saved ? JSON.parse(saved) : null;
@@ -47,6 +53,15 @@ export const getWhiteLabelConfig = (): WhiteLabelConfig | null => {
 
 export const saveWhiteLabelConfig = (config: WhiteLabelConfig): void => {
   localStorage.setItem('whiteLabelConfig', JSON.stringify(config));
+};
+
+export const getModuleIdentityConfig = (): ModuleIdentityConfig => {
+  const saved = localStorage.getItem('moduleIdentityConfig');
+  return saved ? JSON.parse(saved) : { payinsIdentityId: null, payoutsIdentityId: null, requireOnboarding: false };
+};
+
+export const saveModuleIdentityConfig = (config: ModuleIdentityConfig): void => {
+  localStorage.setItem('moduleIdentityConfig', JSON.stringify(config));
 };
 
 const ConfigPage: React.FC = () => {
@@ -73,6 +88,13 @@ const ConfigPage: React.FC = () => {
   const [newCustomName, setNewCustomName] = useState('');
   const [newIconColor, setNewIconColor] = useState('#6366f1');
 
+  // Module Identity config state
+  const [moduleIdentityConfig, setModuleIdentityConfig] = useState<ModuleIdentityConfig>({
+    payinsIdentityId: null,
+    payoutsIdentityId: null,
+    requireOnboarding: false,
+  });
+
   // API hooks
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
@@ -81,6 +103,7 @@ const ConfigPage: React.FC = () => {
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
+  const institutionIdentities = identities.filter(i => i.identity_type === 'INSTITUTION');
 
   // Load saved configs on mount
   useEffect(() => {
@@ -92,6 +115,10 @@ const ConfigPage: React.FC = () => {
     const savedWhiteLabel = getWhiteLabelConfig();
     if (savedWhiteLabel) {
       setWhiteLabelConfig(savedWhiteLabel);
+    }
+    const savedModuleIdentity = getModuleIdentityConfig();
+    if (savedModuleIdentity) {
+      setModuleIdentityConfig(savedModuleIdentity);
     }
   }, []);
 
@@ -192,18 +219,24 @@ const ConfigPage: React.FC = () => {
     toast.success('White Label configuration saved');
   };
 
+  const handleSaveModuleIdentityConfig = () => {
+    saveModuleIdentityConfig(moduleIdentityConfig);
+    toast.success('Module settings saved');
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Configuration</h2>
-        <p className="text-muted-foreground">Manage API settings, identities, accounts, and white label settings.</p>
+        <p className="text-muted-foreground">Manage API settings, identities, accounts, and module settings.</p>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="api" className="space-y-6">
         <TabsList className="bg-secondary">
           <TabsTrigger value="api">API Settings</TabsTrigger>
+          <TabsTrigger value="modules">Modules</TabsTrigger>
           <TabsTrigger value="identities">Identities ({identities.length})</TabsTrigger>
           <TabsTrigger value="accounts">Accounts ({accounts.length})</TabsTrigger>
           <TabsTrigger value="whitelabel">White Label</TabsTrigger>
@@ -369,6 +402,148 @@ const ConfigPage: React.FC = () => {
               <div className={`px-4 py-2 rounded-full ${config.environment === 'sandbox' ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'}`}>
                 <span className="font-medium capitalize">{config.environment}</span>
               </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Modules Tab */}
+        <TabsContent value="modules" className="space-y-6">
+          {/* Pay-ins Settings */}
+          <div className="glass rounded-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-module-payins/10 flex items-center justify-center">
+                <ArrowDownToLine className="h-5 w-5 text-module-payins" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Pay-ins Module</h3>
+                <p className="text-sm text-muted-foreground">Configure identity settings for fiat deposits</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Default Institution Identity</Label>
+                <Select 
+                  value={moduleIdentityConfig.payinsIdentityId || 'force-new'} 
+                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                    ...prev, 
+                    payinsIdentityId: value === 'force-new' ? null : value 
+                  }))}
+                >
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select identity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="force-new">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Require new registration
+                      </span>
+                    </SelectItem>
+                    {institutionIdentities.map((identity) => (
+                      <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                        <span className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {identity.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {moduleIdentityConfig.payinsIdentityId 
+                    ? 'Users will use this identity by default' 
+                    : 'Users must complete business registration to use Pay-ins'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Pay-outs Settings */}
+          <div className="glass rounded-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-module-payouts/10 flex items-center justify-center">
+                <ArrowUpFromLine className="h-5 w-5 text-module-payouts" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Pay-outs Module</h3>
+                <p className="text-sm text-muted-foreground">Configure identity settings for fiat withdrawals</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Default Institution Identity</Label>
+                <Select 
+                  value={moduleIdentityConfig.payoutsIdentityId || 'force-new'} 
+                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                    ...prev, 
+                    payoutsIdentityId: value === 'force-new' ? null : value 
+                  }))}
+                >
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select identity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="force-new">
+                      <span className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Require new registration
+                      </span>
+                    </SelectItem>
+                    {institutionIdentities.map((identity) => (
+                      <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                        <span className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          {identity.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {moduleIdentityConfig.payoutsIdentityId 
+                    ? 'Users will use this identity by default' 
+                    : 'Users must complete business registration to use Pay-outs'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Global Settings */}
+          <div className="glass rounded-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Settings className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Global Settings</h3>
+                <p className="text-sm text-muted-foreground">Control module behavior</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border cursor-pointer hover:border-primary/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={moduleIdentityConfig.requireOnboarding}
+                  onChange={(e) => setModuleIdentityConfig(prev => ({ ...prev, requireOnboarding: e.target.checked }))}
+                  className="w-4 h-4 rounded border-border"
+                />
+                <div>
+                  <p className="font-medium text-foreground">Always require fresh onboarding</p>
+                  <p className="text-sm text-muted-foreground">Force users to create new identity even if one is configured above</p>
+                </div>
+              </label>
+            </div>
+
+            <div className="mt-8 flex justify-end">
+              <Button 
+                onClick={handleSaveModuleIdentityConfig}
+                className="bg-primary hover:bg-primary/90"
+              >
+                Save Module Settings
+              </Button>
             </div>
           </div>
         </TabsContent>
