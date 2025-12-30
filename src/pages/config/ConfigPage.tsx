@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette, Building2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
+import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette, Building2, ArrowDownToLine, ArrowUpFromLine, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,7 +44,30 @@ export interface ModuleIdentityConfig {
   payinsIdentityId: string | null; // null = force new, 'none' = no default, or identity_id
   payoutsIdentityId: string | null;
   requireOnboarding: boolean; // if true, forces new identity creation
+  idvVendor: string | null; // IDV vendor selection
 }
+
+// Available IDV Vendors
+export const IDV_VENDORS = [
+  'JUMIO',
+  'ALLOY',
+  'LEXISNEXIS',
+  'MITEK',
+  'SUMSUB',
+  'MICROBILT',
+  'ONFIDO',
+  'CUSTOMER',
+  'EQUIFAX',
+  'ID3_AUTHENTICATE',
+  'FIS',
+  'PROVE',
+  'PERSONA',
+  'PLAID',
+  'DOTFILE',
+  'AIPRISE',
+] as const;
+
+export type IdvVendor = typeof IDV_VENDORS[number];
 
 export const getWhiteLabelConfig = (): WhiteLabelConfig | null => {
   const saved = localStorage.getItem('whiteLabelConfig');
@@ -57,7 +80,7 @@ export const saveWhiteLabelConfig = (config: WhiteLabelConfig): void => {
 
 export const getModuleIdentityConfig = (): ModuleIdentityConfig => {
   const saved = localStorage.getItem('moduleIdentityConfig');
-  return saved ? JSON.parse(saved) : { payinsIdentityId: null, payoutsIdentityId: null, requireOnboarding: false };
+  return saved ? JSON.parse(saved) : { payinsIdentityId: null, payoutsIdentityId: null, requireOnboarding: false, idvVendor: null };
 };
 
 export const saveModuleIdentityConfig = (config: ModuleIdentityConfig): void => {
@@ -93,6 +116,7 @@ const ConfigPage: React.FC = () => {
     payinsIdentityId: null,
     payoutsIdentityId: null,
     requireOnboarding: false,
+    idvVendor: null,
   });
 
   // API hooks
@@ -505,6 +529,51 @@ const ConfigPage: React.FC = () => {
                   {moduleIdentityConfig.payoutsIdentityId 
                     ? 'Users will use this identity by default' 
                     : 'Users must complete business registration to use Pay-outs'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* IDV Vendor Settings */}
+          <div className="glass rounded-xl p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                <UserCheck className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Identity Verification (IDV)</h3>
+                <p className="text-sm text-muted-foreground">Select the vendor for identity verification</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>IDV Vendor</Label>
+                <Select 
+                  value={moduleIdentityConfig.idvVendor || 'none'} 
+                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                    ...prev, 
+                    idvVendor: value === 'none' ? null : value 
+                  }))}
+                >
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select IDV vendor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="text-muted-foreground">No vendor selected</span>
+                    </SelectItem>
+                    {IDV_VENDORS.map((vendor) => (
+                      <SelectItem key={vendor} value={vendor}>
+                        {vendor.replace(/_/g, ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {moduleIdentityConfig.idvVendor 
+                    ? `Using ${moduleIdentityConfig.idvVendor.replace(/_/g, ' ')} for identity verification` 
+                    : 'Select a vendor to enable identity verification'}
                 </p>
               </div>
             </div>
