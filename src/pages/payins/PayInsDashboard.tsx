@@ -16,7 +16,7 @@ import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAc
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
 import { useCryptoAddresses } from '@/hooks/useCrypto';
 import { Transaction, CreateIdentityRequest, CreateAccountRequest, PaxosIdentity } from '@/api/types';
-import { getModuleIdentityConfig } from '@/pages/config/ConfigPage';
+import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
 
 const PayInsDashboard: React.FC = () => {
@@ -66,13 +66,22 @@ const PayInsDashboard: React.FC = () => {
   const handleCreateIdentity = async (data: CreateIdentityRequest): Promise<PaxosIdentity | void> => {
     try {
       const result = await createIdentity.mutateAsync(data);
-      // Return the identity for chaining (person -> institution)
-      // Only show success and close dialog for institution identity
-      if (data.identity_request.institution_details) {
+      const createdIdentity = result?.data as PaxosIdentity;
+      
+      // Only process for institution identity (final step in wizard)
+      if (data.identity_request.institution_details && createdIdentity?.identity_id) {
+        // Auto-save to module config
+        const currentConfig = getModuleIdentityConfig();
+        saveModuleIdentityConfig({
+          ...currentConfig,
+          payinsIdentityId: createdIdentity.identity_id,
+        });
+        
         toast.success('Business registered successfully');
         setShowOnboarding(false);
       }
-      return result?.data as PaxosIdentity;
+      
+      return createdIdentity;
     } catch (error) {
       toast.error('Failed to register business');
       throw error; // Re-throw to stop the chain
