@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, ArrowDownToLine, Clock, CheckCircle2, AlertCircle, Loader2, Building2, Wallet, UserPlus, Bitcoin } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, ArrowDownToLine, Clock, CheckCircle2, Loader2, Building2, Wallet, UserPlus, Bitcoin, CreditCard, ExternalLink } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
 import { AccountSelector } from '@/components/shared/AccountSelector';
@@ -8,21 +8,46 @@ import { AccountBalancesCard } from '@/components/shared/AccountBalancesCard';
 import { InstitutionOnboardingWizard } from '@/components/shared/InstitutionOnboardingWizard';
 import { CreateAccountForm } from '@/components/shared/CreateAccountForm';
 import { CryptoAddressList } from '@/components/shared/CryptoAddressList';
+import { AccountsTable } from '@/components/shared/AccountsTable';
+import { CreateFiatAccountForm } from '@/components/shared/CreateFiatAccountForm';
+import { FiatAccountsList } from '@/components/shared/FiatAccountsList';
+import { CreateDestinationAddressForm } from '@/components/shared/CreateDestinationAddressForm';
+import { DestinationAddressList } from '@/components/shared/DestinationAddressList';
+import { AccountDetailModal } from '@/components/shared/AccountDetailModal';
+import { DepositAddressDetailModal } from '@/components/shared/DepositAddressDetailModal';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
-import { useCryptoAddresses } from '@/hooks/useCrypto';
-import { Transaction, CreateIdentityRequest, CreateAccountRequest, PaxosIdentity } from '@/api/types';
+import { useCryptoAddresses, useCryptoDestinationAddresses, useCreateCryptoDestinationAddress } from '@/hooks/useCrypto';
+import { useFiatAccounts, useRegisterFiatAccount } from '@/hooks/useFiat';
+import { 
+  Transaction, 
+  CreateIdentityRequest, 
+  CreateAccountRequest, 
+  PaxosIdentity, 
+  PaxosAccount,
+  CryptoAddress,
+  RegisterFiatAccountRequest,
+  CreateCryptoDestinationAddressRequest
+} from '@/api/types';
 import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
 
 const PayInsDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [showCreateFiatAccount, setShowCreateFiatAccount] = useState(false);
+  const [showCreateDestination, setShowCreateDestination] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<PaxosAccount | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<CryptoAddress | null>(null);
+
+  // Data fetching
   const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ 
     limit: 5,
     account_id: selectedAccountId || undefined
@@ -30,12 +55,25 @@ const PayInsDashboard: React.FC = () => {
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
-  const createIdentity = useCreateIdentity();
-  const createAccount = useCreateAccount();
   const { data: cryptoAddressesResponse, isLoading: loadingCryptoAddresses } = useCryptoAddresses(
     selectedAccountId ? { account_id: selectedAccountId } : undefined
   );
+  const { data: fiatAccountsResponse, isLoading: loadingFiatAccounts } = useFiatAccounts();
+  const { data: destinationAddressesResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses();
 
+  // For selected account modal
+  const { data: selectedAccountBalancesResponse, isLoading: loadingSelectedBalances } = useAccountBalances(selectedAccount?.id || '');
+  const { data: selectedAccountAddressesResponse, isLoading: loadingSelectedAddresses } = useCryptoAddresses(
+    selectedAccount ? { account_id: selectedAccount.id } : undefined
+  );
+
+  // Mutations
+  const createIdentity = useCreateIdentity();
+  const createAccount = useCreateAccount();
+  const registerFiatAccount = useRegisterFiatAccount();
+  const createDestinationAddress = useCreateCryptoDestinationAddress();
+
+  // Derived data
   const transactions = (transactionsResponse?.data || []).filter(
     (tx: Transaction) => tx.type === 'deposit'
   );
@@ -43,6 +81,11 @@ const PayInsDashboard: React.FC = () => {
   const identities = identitiesResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
   const cryptoAddresses = cryptoAddressesResponse?.data || [];
+  const fiatAccounts = fiatAccountsResponse?.data || [];
+  const destinationAddresses = destinationAddressesResponse?.data || [];
+  const selectedAccountBalances = Array.isArray(selectedAccountBalancesResponse?.data?.items) 
+    ? selectedAccountBalancesResponse.data.items : [];
+  const selectedAccountAddresses = selectedAccountAddressesResponse?.data || [];
 
   // Get module config and check for institution identity
   const moduleConfig = getModuleIdentityConfig();
@@ -68,9 +111,7 @@ const PayInsDashboard: React.FC = () => {
       const result = await createIdentity.mutateAsync(data);
       const createdIdentity = result?.data as PaxosIdentity;
       
-      // Only process for institution identity (final step in wizard)
       if (data.identity_request.institution_details && createdIdentity?.identity_id) {
-        // Auto-save to module config
         const currentConfig = getModuleIdentityConfig();
         saveModuleIdentityConfig({
           ...currentConfig,
@@ -84,7 +125,7 @@ const PayInsDashboard: React.FC = () => {
       return createdIdentity;
     } catch (error) {
       toast.error('Failed to register business');
-      throw error; // Re-throw to stop the chain
+      throw error;
     }
   };
 
@@ -98,7 +139,34 @@ const PayInsDashboard: React.FC = () => {
     }
   };
 
-  // If loading identities, show loading state
+  const handleRegisterFiatAccount = async (data: RegisterFiatAccountRequest) => {
+    try {
+      await registerFiatAccount.mutateAsync(data);
+      toast.success('Fiat account registered successfully');
+      setShowCreateFiatAccount(false);
+    } catch (error) {
+      toast.error('Failed to register fiat account');
+    }
+  };
+
+  const handleCreateDestinationAddress = async (data: CreateCryptoDestinationAddressRequest) => {
+    try {
+      await createDestinationAddress.mutateAsync(data);
+      toast.success('Destination address registered successfully');
+      setShowCreateDestination(false);
+    } catch (error) {
+      toast.error('Failed to register destination address');
+    }
+  };
+
+  const handleAccountSelect = (account: PaxosAccount) => {
+    setSelectedAccount(account);
+  };
+
+  const handleAddressSelect = (address: CryptoAddress) => {
+    setSelectedAddress(address);
+  };
+
   if (loadingIdentities) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -112,7 +180,7 @@ const PayInsDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Onboarding Banner - Non-blocking */}
+      {/* Onboarding Banner */}
       {needsOnboarding && (
         <div className="rounded-xl bg-gradient-to-r from-module-payins/10 via-module-payins/5 to-transparent border border-module-payins/30 p-4 flex items-center justify-between animate-fade-in">
           <div className="flex items-center gap-4">
@@ -135,7 +203,7 @@ const PayInsDashboard: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Pay-ins Dashboard</h2>
-          <p className="text-muted-foreground">Manage fiat deposits and deposit instructions</p>
+          <p className="text-muted-foreground">Manage deposits, accounts, and addresses</p>
         </div>
         <div className="flex items-center gap-3">
           <AccountSelector
@@ -146,16 +214,10 @@ const PayInsDashboard: React.FC = () => {
             isLoading={loadingAccounts}
             label="Account"
           />
-          {institutionIdentity && (
-            <Button onClick={() => setShowCreateAccount(true)} variant="outline" className="border-module-payins text-module-payins hover:bg-module-payins/10">
-              <Plus className="h-4 w-4 mr-2" />
-              New Account
-            </Button>
-          )}
         </div>
       </div>
 
-      {/* Account Info Bar */}
+      {/* Institution Info Bar */}
       {institutionIdentity && (
         <div className="glass rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -165,7 +227,7 @@ const PayInsDashboard: React.FC = () => {
             <div>
               <p className="font-medium text-foreground">{institutionIdentity.name}</p>
               <p className="text-sm text-muted-foreground">
-                {accounts.length} account{accounts.length !== 1 ? 's' : ''} • Status: {institutionIdentity.status}
+                {accounts.length} account{accounts.length !== 1 ? 's' : ''} • {cryptoAddresses.length} deposit address{cryptoAddresses.length !== 1 ? 'es' : ''}
               </p>
             </div>
           </div>
@@ -175,162 +237,267 @@ const PayInsDashboard: React.FC = () => {
                 Sandbox Deposit
               </Button>
             </Link>
-            <Link to="/app/pay-ins/crypto-address">
-              <Button variant="outline" size="sm" className="border-module-payins text-module-payins hover:bg-module-payins/10">
-                <Bitcoin className="h-4 w-4 mr-2" />
-                Crypto Address
-              </Button>
-            </Link>
           </div>
         </div>
       )}
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Stats & Instructions */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Stats Grid */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Total Deposits"
-              value={loadingTransactions ? '...' : `$${completedDeposits.reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount || '0'), 0).toLocaleString()}`}
-              change={`${completedDeposits.length} completed`}
-              changeType="positive"
-              icon={ArrowDownToLine}
-            />
-            <StatCard
-              title="Pending"
-              value={loadingTransactions ? '...' : pendingDeposits.length.toString()}
-              change={`${pendingDeposits.length} pending`}
-              changeType="neutral"
-              icon={Clock}
-            />
-            <StatCard
-              title="Completed (30d)"
-              value={loadingTransactions ? '...' : completedDeposits.length.toString()}
-              change={`${completedDeposits.length} txns`}
-              changeType="positive"
-              icon={CheckCircle2}
-            />
-            <StatCard
-              title="Crypto Addresses"
-              value={loadingCryptoAddresses ? '...' : cryptoAddresses.length.toString()}
-              change="All networks"
-              changeType="neutral"
-              icon={Bitcoin}
-            />
-          </div>
+      {/* Main Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="bg-secondary/50 p-1">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="accounts" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
+            Accounts
+          </TabsTrigger>
+          <TabsTrigger value="deposit-addresses" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
+            Deposit Addresses
+          </TabsTrigger>
+          <TabsTrigger value="fiat-accounts" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
+            Fiat Accounts
+          </TabsTrigger>
+          <TabsTrigger value="destinations" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
+            Destinations
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Crypto Addresses */}
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Stats Grid */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  title="Total Deposits"
+                  value={loadingTransactions ? '...' : `$${completedDeposits.reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount || '0'), 0).toLocaleString()}`}
+                  change={`${completedDeposits.length} completed`}
+                  changeType="positive"
+                  icon={ArrowDownToLine}
+                />
+                <StatCard
+                  title="Pending"
+                  value={loadingTransactions ? '...' : pendingDeposits.length.toString()}
+                  change="awaiting"
+                  changeType="neutral"
+                  icon={Clock}
+                />
+                <StatCard
+                  title="Deposit Addresses"
+                  value={loadingCryptoAddresses ? '...' : cryptoAddresses.length.toString()}
+                  change="active"
+                  changeType="positive"
+                  icon={Bitcoin}
+                />
+                <StatCard
+                  title="Fiat Accounts"
+                  value={loadingFiatAccounts ? '...' : fiatAccounts.length.toString()}
+                  change="registered"
+                  changeType="neutral"
+                  icon={CreditCard}
+                />
+              </div>
+
+              {/* Recent Deposits */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-semibold text-foreground">Recent Deposits</h3>
+                </div>
+                
+                {loadingTransactions ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ArrowDownToLine className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No deposits yet</p>
+                    <p className="text-sm">Deposits will appear here once received</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {transactions.slice(0, 5).map((deposit: Transaction) => (
+                      <div 
+                        key={deposit.id}
+                        className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payins/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full bg-success/20 flex items-center justify-center">
+                            <ArrowDownToLine className="h-5 w-5 text-success" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">${deposit.amount} {deposit.source_asset}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(deposit.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <TransactionStatusBadge status={deposit.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column - Account Balances */}
+            <div className="space-y-6">
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-foreground">Account Balances</h3>
+                </div>
+                
+                {accounts.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No accounts yet</p>
+                    {institutionIdentity ? (
+                      <Button 
+                        onClick={() => setShowCreateAccount(true)} 
+                        variant="link" 
+                        className="text-module-payins"
+                      >
+                        Create your first account
+                      </Button>
+                    ) : (
+                      <p className="text-sm">Complete registration first</p>
+                    )}
+                  </div>
+                ) : (
+                  <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
+                )}
+              </div>
+
+              {/* Quick Actions */}
+              {institutionIdentity && (
+                <div className="glass rounded-xl p-6">
+                  <h3 className="font-semibold text-foreground mb-4">Quick Actions</h3>
+                  <div className="space-y-2">
+                    <Link to="/app/pay-ins/crypto-address" className="block">
+                      <Button variant="outline" className="w-full justify-start border-border hover:border-module-payins hover:bg-module-payins/5">
+                        <Bitcoin className="h-4 w-4 mr-2 text-module-payins" />
+                        New Deposit Address
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start border-border hover:border-module-payins hover:bg-module-payins/5"
+                      onClick={() => setShowCreateFiatAccount(true)}
+                    >
+                      <Building2 className="h-4 w-4 mr-2 text-module-payins" />
+                      Register Fiat Account
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start border-border hover:border-module-payins hover:bg-module-payins/5"
+                      onClick={() => setShowCreateDestination(true)}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2 text-module-payins" />
+                      Add Destination Wallet
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Accounts Tab */}
+        <TabsContent value="accounts" className="mt-6">
           <div className="glass rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-foreground">Crypto Deposit Addresses</h3>
+              <div>
+                <h3 className="font-semibold text-foreground">Accounts</h3>
+                <p className="text-sm text-muted-foreground">Click an account to view details, balances, and deposit addresses</p>
+              </div>
               {institutionIdentity && (
-                <Link 
-                  to="/app/pay-ins/crypto-address" 
-                  className="text-sm text-module-payins hover:underline"
-                >
-                  Create New
+                <Button onClick={() => setShowCreateAccount(true)} className="bg-module-payins hover:bg-module-payins/90">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Account
+                </Button>
+              )}
+            </div>
+            <AccountsTable 
+              accounts={accounts} 
+              isLoading={loadingAccounts}
+              onSelect={handleAccountSelect}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Deposit Addresses Tab */}
+        <TabsContent value="deposit-addresses" className="mt-6">
+          <div className="glass rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-foreground">Crypto Deposit Addresses</h3>
+                <p className="text-sm text-muted-foreground">Click an address to view details and routing configuration</p>
+              </div>
+              {institutionIdentity && (
+                <Link to="/app/pay-ins/crypto-address">
+                  <Button className="bg-module-payins hover:bg-module-payins/90">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Address
+                  </Button>
                 </Link>
               )}
             </div>
-
-            {cryptoAddresses.length === 0 && !loadingCryptoAddresses ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Bitcoin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No crypto deposit addresses found.</p>
-                {institutionIdentity ? (
-                  <Link to="/app/pay-ins/crypto-address" className="text-module-payins hover:underline">
-                    Create your first address
-                  </Link>
-                ) : (
-                  <p className="text-sm">Complete business registration to get started</p>
-                )}
-              </div>
-            ) : (
-              <CryptoAddressList 
-                addresses={cryptoAddresses} 
-                isLoading={loadingCryptoAddresses}
-                emptyMessage="No crypto deposit addresses for this account"
-              />
-            )}
+            <CryptoAddressList 
+              addresses={cryptoAddresses} 
+              isLoading={loadingCryptoAddresses}
+              emptyMessage="No deposit addresses created yet"
+              onSelect={handleAddressSelect}
+            />
           </div>
+        </TabsContent>
 
-          {/* Recent Deposits */}
+        {/* Fiat Accounts Tab */}
+        <TabsContent value="fiat-accounts" className="mt-6">
           <div className="glass rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-foreground">Recent Deposits</h3>
-              <Link to="/app/pay-ins/history" className="text-sm text-module-payins hover:underline">
-                View All
-              </Link>
+              <div>
+                <h3 className="font-semibold text-foreground">Registered Fiat Accounts</h3>
+                <p className="text-sm text-muted-foreground">Bank accounts registered for fiat withdrawals</p>
+              </div>
+              {institutionIdentity && (
+                <Button onClick={() => setShowCreateFiatAccount(true)} className="bg-module-payins hover:bg-module-payins/90">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Register Account
+                </Button>
+              )}
             </div>
-            
-            {loadingTransactions ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : transactions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No deposits yet.</p>
-                <p className="text-sm">Deposits will appear here once received.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {transactions.slice(0, 5).map((deposit: Transaction) => (
-                  <div 
-                    key={deposit.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payins/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-success/20 flex items-center justify-center">
-                        <ArrowDownToLine className="h-5 w-5 text-success" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">${deposit.amount} {deposit.source_asset}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(deposit.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <TransactionStatusBadge status={deposit.status} />
-                  </div>
-                ))}
-              </div>
-            )}
+            <FiatAccountsList 
+              accounts={fiatAccounts} 
+              isLoading={loadingFiatAccounts}
+              emptyMessage="No fiat accounts registered yet"
+            />
           </div>
-        </div>
+        </TabsContent>
 
-        {/* Right Column - Account Balances */}
-        <div className="space-y-6">
+        {/* Destination Addresses Tab */}
+        <TabsContent value="destinations" className="mt-6">
           <div className="glass rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">Account Balances</h3>
-            </div>
-            
-            {accounts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No accounts yet</p>
-                {institutionIdentity ? (
-                  <Button 
-                    onClick={() => setShowCreateAccount(true)} 
-                    variant="link" 
-                    className="text-module-payins"
-                  >
-                    Create your first account
-                  </Button>
-                ) : (
-                  <p className="text-sm">Complete registration first</p>
-                )}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-foreground">Destination Crypto Addresses</h3>
+                <p className="text-sm text-muted-foreground">External wallets registered for crypto withdrawals</p>
               </div>
-            ) : (
-              <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
-            )}
+              {institutionIdentity && (
+                <Button onClick={() => setShowCreateDestination(true)} className="bg-module-payins hover:bg-module-payins/90">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Destination
+                </Button>
+              )}
+            </div>
+            <DestinationAddressList 
+              addresses={destinationAddresses} 
+              isLoading={loadingDestinations}
+              emptyMessage="No destination addresses registered yet"
+            />
           </div>
-        </div>
-      </div>
+        </TabsContent>
+      </Tabs>
 
-      {/* Onboarding Dialog - Dismissible */}
+      {/* Modals */}
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
         <DialogContent className="max-w-3xl bg-card border-border">
           <DialogHeader>
@@ -345,7 +512,6 @@ const PayInsDashboard: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Create Account Dialog */}
       <Dialog open={showCreateAccount} onOpenChange={setShowCreateAccount}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
@@ -359,6 +525,54 @@ const PayInsDashboard: React.FC = () => {
           />
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showCreateFiatAccount} onOpenChange={setShowCreateFiatAccount}>
+        <DialogContent className="max-w-2xl bg-card border-border max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Register Fiat Account</DialogTitle>
+          </DialogHeader>
+          <CreateFiatAccountForm
+            accounts={accounts}
+            onSubmit={handleRegisterFiatAccount}
+            isLoading={registerFiatAccount.isPending}
+            onCancel={() => setShowCreateFiatAccount(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateDestination} onOpenChange={setShowCreateDestination}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Register Destination Address</DialogTitle>
+          </DialogHeader>
+          <CreateDestinationAddressForm
+            accounts={accounts}
+            onSubmit={handleCreateDestinationAddress}
+            isLoading={createDestinationAddress.isPending}
+            onCancel={() => setShowCreateDestination(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <AccountDetailModal
+        account={selectedAccount}
+        balances={selectedAccountBalances}
+        cryptoAddresses={selectedAccountAddresses}
+        isLoadingBalances={loadingSelectedBalances}
+        isLoadingAddresses={loadingSelectedAddresses}
+        isOpen={!!selectedAccount}
+        onClose={() => setSelectedAccount(null)}
+        onCreateAddress={() => {
+          setSelectedAccount(null);
+          navigate('/app/pay-ins/crypto-address');
+        }}
+      />
+
+      <DepositAddressDetailModal
+        address={selectedAddress}
+        isOpen={!!selectedAddress}
+        onClose={() => setSelectedAddress(null)}
+      />
     </div>
   );
 };

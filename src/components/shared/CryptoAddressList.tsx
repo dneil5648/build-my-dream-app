@@ -9,12 +9,14 @@ interface CryptoAddressListProps {
   addresses: CryptoAddress[];
   isLoading?: boolean;
   emptyMessage?: string;
+  onSelect?: (address: CryptoAddress) => void;
 }
 
 export const CryptoAddressList: React.FC<CryptoAddressListProps> = ({
   addresses,
   isLoading,
   emptyMessage = 'No deposit addresses found',
+  onSelect,
 }) => {
   const copyAddress = (address: string) => {
     navigator.clipboard.writeText(address);
@@ -64,7 +66,8 @@ export const CryptoAddressList: React.FC<CryptoAddressListProps> = ({
       {addresses.map((address) => (
         <div
           key={address.id}
-          className="p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/30 transition-colors"
+          onClick={() => onSelect?.(address)}
+          className={`p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/30 transition-colors ${onSelect ? 'cursor-pointer' : ''}`}
         >
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
