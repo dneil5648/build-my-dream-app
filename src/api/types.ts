@@ -258,11 +258,14 @@ export interface PaxosAccount {
   updated_at: string;
 }
 
-export interface AccountBalance {
+export interface AccountBalanceItem {
   asset: string;
   available: string;
   trading: string;
-  total: string;
+}
+
+export interface AccountBalancesResponse {
+  items: AccountBalanceItem[];
 }
 
 // ============= Fiat Types =============

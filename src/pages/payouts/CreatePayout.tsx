@@ -25,7 +25,7 @@ const CreatePayout: React.FC = () => {
   const withdrawAssets = useWithdrawAssets();
 
   const accounts = accountsResponse?.data || [];
-  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
+  const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
   const fiatAccounts = fiatAccountsResponse?.data || [];
 
   const handleSubmit = async (e: React.FormEvent) => {

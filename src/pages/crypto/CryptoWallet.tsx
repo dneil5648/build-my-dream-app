@@ -26,7 +26,7 @@ const CryptoWallet: React.FC = () => {
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
-  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
+  const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
   const transactions = (transactionsResponse?.data || []).filter(
     (tx: Transaction) => tx.type === 'deposit' || tx.type === 'withdrawal'
   );
@@ -60,7 +60,7 @@ const CryptoWallet: React.FC = () => {
 
   // Calculate total from balances
   const totalValue = balances.reduce((sum, b) => {
-    const val = parseFloat(b.total) || 0;
+    const val = parseFloat(b.available) || 0;
     return sum + val;
   }, 0);
 
@@ -153,9 +153,9 @@ const CryptoWallet: React.FC = () => {
               <BalanceCard
                 key={balance.asset}
                 asset={balance.asset}
-                balance={balance.total}
-                usdValue={`$${parseFloat(balance.total).toLocaleString()}`}
-                change={balance.available !== balance.total ? `${balance.available} available` : ''}
+                balance={balance.available}
+                usdValue={`$${parseFloat(balance.available).toLocaleString()}`}
+                change={balance.trading !== '0' ? `${balance.trading} in trading` : ''}
                 changeType="neutral"
               />
             ))}

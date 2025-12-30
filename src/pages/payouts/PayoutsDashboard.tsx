@@ -32,7 +32,7 @@ const PayoutsDashboard: React.FC = () => {
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
-  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
+  const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
   const fiatAccounts = fiatAccountsResponse?.data || [];
   const payouts = (transactionsResponse?.data || []).filter(
     (tx: Transaction) => tx.type === 'withdrawal'

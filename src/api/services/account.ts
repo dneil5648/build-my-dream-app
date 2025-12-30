@@ -2,7 +2,7 @@ import { apiClient } from '../client';
 import { 
   PaxosAccount, 
   CreateAccountRequest,
-  AccountBalance,
+  AccountBalancesResponse,
   ListQueryParams,
   ApiResponse,
 } from '../types';
@@ -24,7 +24,7 @@ export const accountService = {
   },
 
   // Get account balances
-  getAccountBalances: async (id: string): Promise<ApiResponse<AccountBalance[]>> => {
-    return apiClient.get<AccountBalance[]>(`/entities/account/${id}/balances`);
+  getAccountBalances: async (id: string): Promise<ApiResponse<AccountBalancesResponse>> => {
+    return apiClient.get<AccountBalancesResponse>(`/entities/account/${id}/balances`);
   },
 };

@@ -23,7 +23,7 @@ const TreasuryConvert: React.FC = () => {
   const convertAssets = useConvertAssets();
 
   const accounts = accountsResponse?.data || [];
-  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
+  const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
 
   const handleConvert = async () => {
     if (!formData.account || !formData.sourceAsset || !formData.destAsset || !formData.amount) {
