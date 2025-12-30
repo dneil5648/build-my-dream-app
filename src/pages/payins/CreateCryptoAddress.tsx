@@ -146,13 +146,14 @@ const CreateCryptoAddress: React.FC = () => {
                 <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border">
-                {accounts.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.description || `Account ${account.paxos_account_id.slice(0, 8)}...`}
-                  </SelectItem>
-                ))}
-                {accounts.length === 0 && !loadingAccounts && (
-                  <SelectItem value="" disabled>No accounts found</SelectItem>
+                {accounts.length === 0 && !loadingAccounts ? (
+                  <div className="px-2 py-4 text-center text-muted-foreground text-sm">No accounts found</div>
+                ) : (
+                  accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.description || `Account ${account.paxos_account_id.slice(0, 8)}...`}
+                    </SelectItem>
+                  ))
                 )}
               </SelectContent>
             </Select>
@@ -227,7 +228,9 @@ const CreateCryptoAddress: React.FC = () => {
                   <SelectValue placeholder="Select destination" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  <SelectItem value={formData.source_asset}>{formData.source_asset} (No conversion)</SelectItem>
+                  {formData.source_asset && (
+                    <SelectItem value={formData.source_asset}>{formData.source_asset} (No conversion)</SelectItem>
+                  )}
                   <SelectItem value="USD">USD</SelectItem>
                   <SelectItem value="BTC">Bitcoin (BTC)</SelectItem>
                   <SelectItem value="ETH">Ethereum (ETH)</SelectItem>
@@ -319,17 +322,18 @@ const CreateCryptoAddress: React.FC = () => {
                     <SelectValue placeholder={loadingFiatAccounts ? 'Loading...' : 'Select fiat account'} />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border">
-                    {fiatAccounts.map((account) => (
-                      <SelectItem key={account.id} value={account.paxos_fiat_account_id}>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          {account.description || account.network}
-                          {account.wire_account_number && ` (****${account.wire_account_number.slice(-4)})`}
-                        </div>
-                      </SelectItem>
-                    ))}
-                    {fiatAccounts.length === 0 && !loadingFiatAccounts && (
-                      <SelectItem value="" disabled>No fiat accounts registered</SelectItem>
+                    {fiatAccounts.length === 0 && !loadingFiatAccounts ? (
+                      <div className="px-2 py-4 text-center text-muted-foreground text-sm">No fiat accounts registered</div>
+                    ) : (
+                      fiatAccounts.map((account) => (
+                        <SelectItem key={account.id} value={account.paxos_fiat_account_id}>
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            {account.description || account.network}
+                            {account.wire_account_number && ` (****${account.wire_account_number.slice(-4)})`}
+                          </div>
+                        </SelectItem>
+                      ))
                     )}
                   </SelectContent>
                 </Select>
@@ -354,16 +358,17 @@ const CreateCryptoAddress: React.FC = () => {
                     <SelectValue placeholder={loadingDestinations ? 'Loading...' : 'Select destination address'} />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border">
-                    {destinationAddresses.map((addr) => (
-                      <SelectItem key={addr.id} value={addr.destination_address_id || addr.id}>
-                        <div className="flex items-center gap-2">
-                          <Wallet className="h-4 w-4 text-muted-foreground" />
-                          {addr.label || `${addr.crypto_network} - ${addr.address.slice(0, 12)}...`}
-                        </div>
-                      </SelectItem>
-                    ))}
-                    {destinationAddresses.length === 0 && !loadingDestinations && (
-                      <SelectItem value="" disabled>No destination addresses registered</SelectItem>
+                    {destinationAddresses.length === 0 && !loadingDestinations ? (
+                      <div className="px-2 py-4 text-center text-muted-foreground text-sm">No destination addresses registered</div>
+                    ) : (
+                      destinationAddresses.map((addr) => (
+                        <SelectItem key={addr.id} value={addr.destination_address_id || addr.id}>
+                          <div className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-muted-foreground" />
+                            {addr.label || `${addr.crypto_network} - ${addr.address.slice(0, 12)}...`}
+                          </div>
+                        </SelectItem>
+                      ))
                     )}
                   </SelectContent>
                 </Select>
