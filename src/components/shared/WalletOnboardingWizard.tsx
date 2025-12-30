@@ -237,10 +237,9 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
       {/* Step Content */}
       {step === 'wallet-type' && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Create New Wallet</h3>
           <p className="text-muted-foreground">Choose the type of wallet you want to create.</p>
           
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-2 gap-4 mt-4">
             <button
               type="button"
               onClick={() => setWalletType('personal')}
