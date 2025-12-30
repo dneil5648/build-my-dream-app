@@ -14,12 +14,20 @@ const DEFAULT_BACKEND_URL = 'https://glossiest-junko-tangential.ngrok-free.dev';
 
 const getBaseUrl = (): string => {
   const config = getApiConfig();
-  if (config?.baseUrl) {
-    return config.baseUrl;
+
+  const configuredBaseUrl = config?.baseUrl?.trim();
+  const isBrowser = typeof window !== 'undefined';
+  const isLocalSite = isBrowser && window.location.hostname === 'localhost';
+  const isConfiguredLocalhost = !!configuredBaseUrl && /^(http:\/\/localhost|https:\/\/localhost|http:\/\/127\.0\.0\.1|https:\/\/127\.0\.0\.1)/.test(configuredBaseUrl);
+
+  if (configuredBaseUrl && (!isConfiguredLocalhost || isLocalSite)) {
+    return configuredBaseUrl;
   }
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+
+  if (isLocalSite) {
     return '';
   }
+
   return DEFAULT_BACKEND_URL;
 };
 
