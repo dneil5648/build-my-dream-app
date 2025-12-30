@@ -121,6 +121,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
           passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
           passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
+          passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
           first_name: firstName || undefined,
           last_name: lastName,
           email: email || undefined,
@@ -132,6 +133,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           nationality: nationality || undefined,
           address: address,
         },
+        tax_details: shouldIncludeCipId() ? [{
+          tax_payer_id: cipId,
+          tax_payer_country: nationality,
+          tin_verification_status: 'APPROVED',
+        }] : undefined,
         customer_due_diligence: {
           purpose_of_account: purposeOfAccount as any,
           employment_status: employmentStatus as any,

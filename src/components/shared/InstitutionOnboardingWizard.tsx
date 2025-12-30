@@ -130,6 +130,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
         passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
         passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
+        passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
         last_name: repLastName,
         first_name: repFirstName || undefined,
         email: repEmail || undefined,
@@ -141,6 +142,11 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         nationality: repNationality || undefined,
         address: repAddress,
       },
+      tax_details: shouldIncludeRepCipId() ? [{
+        tax_payer_id: repCipId,
+        tax_payer_country: repNationality,
+        tin_verification_status: 'APPROVED',
+      }] : undefined,
       customer_due_diligence: {
         purpose_of_account: repPurposeOfAccount as any,
         employment_status: repEmploymentStatus as any,
