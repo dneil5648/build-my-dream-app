@@ -106,7 +106,7 @@ export interface PaxosIdentity {
 
 export interface CreateAccountRequest {
   identity_id: string;
-  create_profile?: boolean;
+  description?: string;
 }
 
 export interface PaxosAccount {

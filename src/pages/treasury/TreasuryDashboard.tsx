@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRightLeft, Building2, PieChart, TrendingUp, Wallet, Plus, Users, Loader2 } from 'lucide-react';
+import { ArrowRightLeft, Building2, PieChart, TrendingUp, Wallet, Plus, Users, Loader2, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,18 @@ const TreasuryDashboard: React.FC = () => {
           <p className="text-muted-foreground">Manage assets, conversions, and internal transfers</p>
         </div>
         <div className="flex gap-3">
+          <Link to="/app/treasury/deposit">
+            <Button variant="outline" className="border-border">
+              <ArrowDownToLine className="h-4 w-4 mr-2" />
+              Deposit
+            </Button>
+          </Link>
+          <Link to="/app/treasury/withdraw">
+            <Button variant="outline" className="border-border">
+              <ArrowUpFromLine className="h-4 w-4 mr-2" />
+              Payout
+            </Button>
+          </Link>
           <Link to="/app/treasury/transfer">
             <Button variant="outline" className="border-border">
               <ArrowRightLeft className="h-4 w-4 mr-2" />

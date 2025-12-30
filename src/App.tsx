@@ -22,6 +22,8 @@ import CryptoDeposit from "./pages/crypto/CryptoDeposit";
 import CryptoWithdraw from "./pages/crypto/CryptoWithdraw";
 import TreasuryDashboard from "./pages/treasury/TreasuryDashboard";
 import TreasuryConvert from "./pages/treasury/TreasuryConvert";
+import TreasuryDeposit from "./pages/treasury/TreasuryDeposit";
+import TreasuryWithdraw from "./pages/treasury/TreasuryWithdraw";
 import PayoutsDashboard from "./pages/payouts/PayoutsDashboard";
 import CreatePayout from "./pages/payouts/CreatePayout";
 import WhiteLabelWallet from "./pages/whitelabel/WhiteLabelWallet";
@@ -68,6 +70,8 @@ const App = () => (
                 <Route path="treasury" element={<TreasuryDashboard />} />
                 <Route path="treasury/dashboard" element={<TreasuryDashboard />} />
                 <Route path="treasury/convert" element={<TreasuryConvert />} />
+                <Route path="treasury/deposit" element={<TreasuryDeposit />} />
+                <Route path="treasury/withdraw" element={<TreasuryWithdraw />} />
                 <Route path="treasury/transfer" element={<TreasuryDashboard />} />
                 <Route path="treasury/accounts" element={<TreasuryDashboard />} />
                 
