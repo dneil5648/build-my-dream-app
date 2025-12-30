@@ -171,7 +171,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
   };
 
   return (
-    <div className="flex flex-col max-h-[70vh]">
+    <div className="flex flex-col max-h-[70vh] overflow-hidden">
       {/* Progress Steps */}
       <div className="flex-shrink-0 flex items-center justify-between mb-6 pb-4 border-b border-border">
         {steps.map((s, index) => (
@@ -200,7 +200,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
       </div>
 
       {/* Step Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
         {/* REPRESENTATIVE INFO */}
         {step === 'rep-info' && (
           <div className="space-y-6">
