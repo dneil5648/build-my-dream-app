@@ -13,21 +13,15 @@ import {
 const DEFAULT_BACKEND_URL = 'https://glossiest-junko-tangential.ngrok-free.dev';
 
 const getBaseUrl = (): string => {
-  const config = getApiConfig();
-
-  const configuredBaseUrl = config?.baseUrl?.trim();
   const isBrowser = typeof window !== 'undefined';
-  const isLocalSite = isBrowser && window.location.hostname === 'localhost';
-  const isConfiguredLocalhost = !!configuredBaseUrl && /^(http:\/\/localhost|https:\/\/localhost|http:\/\/127\.0\.0\.1|https:\/\/127\.0\.0\.1)/.test(configuredBaseUrl);
-
-  if (configuredBaseUrl && (!isConfiguredLocalhost || isLocalSite)) {
-    return configuredBaseUrl;
-  }
-
-  if (isLocalSite) {
+  const isLocalhost = isBrowser && window.location.hostname === 'localhost';
+  
+  // Only use Vite proxy (empty baseUrl) when running on localhost
+  if (isLocalhost) {
     return '';
   }
-
+  
+  // For all other environments (preview, production), use the ngrok URL directly
   return DEFAULT_BACKEND_URL;
 };
 
