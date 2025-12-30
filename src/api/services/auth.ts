@@ -21,6 +21,7 @@ export const authService = {
 
     const headers: HeadersInit = {
       'Content-Type': 'application/x-www-form-urlencoded',
+      'ngrok-skip-browser-warning': 'true',
     };
 
     if (token) {
