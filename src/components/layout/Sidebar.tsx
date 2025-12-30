@@ -46,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         <div className="flex h-16 items-center justify-between px-4 border-b border-primary/20">
           {!collapsed && (
             <div className="flex items-center">
-              <img src={paxosLogo} alt="Paxos" className="h-8" />
+              <img src={paxosLogo} alt="Paxos" className="h-12 w-auto" />
             </div>
           )}
           {collapsed && (
