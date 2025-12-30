@@ -19,7 +19,7 @@ const SandboxDeposit: React.FC = () => {
   const [transaction, setTransaction] = useState<{
     id: string;
     amount: string;
-    status: 'pending' | 'processing' | 'completed';
+    status: 'PENDING' | 'PROCESSING' | 'COMPLETED';
   } | null>(null);
 
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
@@ -35,12 +35,12 @@ const SandboxDeposit: React.FC = () => {
     }
 
     // Show pending state
-    setTransaction({ id: 'TXN-' + Date.now(), amount: formData.amount, status: 'pending' });
+    setTransaction({ id: 'TXN-' + Date.now(), amount: formData.amount, status: 'PENDING' });
     
     try {
       // Update to processing
       setTimeout(() => {
-        setTransaction(prev => prev ? {...prev, status: 'processing'} : null);
+        setTransaction(prev => prev ? {...prev, status: 'PROCESSING'} : null);
       }, 500);
 
       await sandboxDeposit.mutateAsync({
@@ -50,7 +50,7 @@ const SandboxDeposit: React.FC = () => {
       });
       
       // Update to completed
-      setTransaction(prev => prev ? {...prev, status: 'completed'} : null);
+      setTransaction(prev => prev ? {...prev, status: 'COMPLETED'} : null);
       toast.success('Sandbox deposit completed!');
     } catch (error) {
       setTransaction(null);

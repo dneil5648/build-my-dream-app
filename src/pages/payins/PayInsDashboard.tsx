@@ -47,10 +47,12 @@ const PayInsDashboard: React.FC = () => {
   const [selectedAccount, setSelectedAccount] = useState<PaxosAccount | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<CryptoAddress | null>(null);
 
-  // Data fetching
-  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ 
-    limit: 5,
-    account_id: selectedAccountId || undefined
+  // Data fetching - filter for deposit-type transactions
+  const { transactions: allTransactions, isLoading: loadingTransactions } = useTransactions({ 
+    limit: 10,
+    account_id: selectedAccountId || undefined,
+    sort: 'created_at',
+    order: 'DESC'
   });
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
@@ -73,9 +75,10 @@ const PayInsDashboard: React.FC = () => {
   const registerFiatAccount = useRegisterFiatAccount();
   const createDestinationAddress = useCreateCryptoDestinationAddress();
 
-  // Derived data
-  const transactions = (transactionsResponse?.data || []).filter(
-    (tx: Transaction) => tx.type === 'deposit'
+  // Derived data - filter for deposit transactions
+  // Filter for deposit transactions
+  const deposits = allTransactions.filter(
+    (tx: Transaction) => tx.transaction_type === 'CRYPTO_DEPOSIT' || tx.transaction_type === 'WIRE_DEPOSIT' || tx.transaction_type === 'BANK_DEPOSIT'
   );
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
@@ -107,8 +110,9 @@ const PayInsDashboard: React.FC = () => {
   }, [accounts, selectedAccountId]);
 
   // Calculate stats from real data
-  const completedDeposits = transactions.filter((t: Transaction) => t.status === 'completed');
-  const pendingDeposits = transactions.filter((t: Transaction) => t.status === 'pending');
+  const completedDeposits = deposits.filter((t: Transaction) => t.status === 'COMPLETED');
+  const pendingDeposits = deposits.filter((t: Transaction) => t.status === 'PENDING' || t.status === 'PROCESSING');
+  const totalDepositAmount = completedDeposits.reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount || '0'), 0);
 
   const handleCreateIdentity = async (data: CreateIdentityRequest): Promise<PaxosIdentity | void> => {
     try {
@@ -311,7 +315,7 @@ const PayInsDashboard: React.FC = () => {
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
-                ) : transactions.length === 0 ? (
+                ) : deposits.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <ArrowDownToLine className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No deposits yet</p>
@@ -319,7 +323,7 @@ const PayInsDashboard: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {transactions.slice(0, 5).map((deposit: Transaction) => (
+                    {deposits.slice(0, 5).map((deposit: Transaction) => (
                       <div 
                         key={deposit.id}
                         className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payins/50 transition-colors"

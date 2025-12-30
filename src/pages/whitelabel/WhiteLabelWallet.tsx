@@ -21,14 +21,13 @@ const WhiteLabelWallet: React.FC = () => {
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse } = useIdentities();
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
-  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ limit: 3 });
+  const { transactions: recentActivity, isLoading: loadingTransactions } = useTransactions({ limit: 3 });
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
-  const recentActivity = transactionsResponse?.data || [];
 
   // Load white label config
   useEffect(() => {
@@ -188,10 +187,10 @@ const WhiteLabelWallet: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {recentActivity.map((tx: Transaction) => {
-                const isDeposit = tx.type === 'deposit';
-                const isWithdrawal = tx.type === 'withdrawal';
-                const isConversion = tx.type === 'conversion';
-                const displayType = isDeposit ? 'receive' : isWithdrawal ? 'send' : tx.type;
+                const isDeposit = tx.transaction_type === 'CRYPTO_DEPOSIT' || tx.transaction_type === 'WIRE_DEPOSIT' || tx.transaction_type === 'BANK_DEPOSIT';
+                const isWithdrawal = tx.transaction_type === 'CRYPTO_WITHDRAWAL' || tx.transaction_type === 'WIRE_WITHDRAWAL' || tx.transaction_type === 'BANK_WITHDRAWAL';
+                const isConversion = tx.transaction_type === 'CONVERSION';
+                const displayType = isDeposit ? 'receive' : isWithdrawal ? 'send' : tx.transaction_type.toLowerCase().replace('_', ' ');
                 
                 return (
                   <div key={tx.id} className="flex items-center justify-between">
