@@ -1,6 +1,14 @@
 import React from 'react';
-import { Building2, Loader2 } from 'lucide-react';
+import { Building2, Loader2, Wallet } from 'lucide-react';
 import { PaxosAccount } from '@/api/types';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface AccountsTableProps {
   accounts: PaxosAccount[];
@@ -34,44 +42,59 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
   }
 
   return (
-    <div className="space-y-3">
-      {accounts.map((account) => (
-        <div
-          key={account.id}
-          onClick={() => onSelect?.(account)}
-          className={`p-4 rounded-lg border transition-colors cursor-pointer ${
-            selectedId === account.id
-              ? 'bg-primary/10 border-primary'
-              : 'bg-secondary/50 border-border hover:border-primary/50'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">
-                  Account {account.paxos_account_id?.slice(0, 8)}...
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Identity: {account.paxos_identity_id?.slice(0, 8)}...
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">
+    <div className="rounded-lg border border-border overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-secondary/50 hover:bg-secondary/50">
+            <TableHead className="w-12"></TableHead>
+            <TableHead>Account ID</TableHead>
+            <TableHead>Identity ID</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Profile</TableHead>
+            <TableHead className="text-right">Created</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {accounts.map((account) => (
+            <TableRow
+              key={account.id}
+              onClick={() => onSelect?.(account)}
+              className={`cursor-pointer transition-colors ${
+                selectedId === account.id
+                  ? 'bg-primary/10 hover:bg-primary/15'
+                  : 'hover:bg-secondary/50'
+              }`}
+            >
+              <TableCell className="w-12">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Wallet className="h-4 w-4 text-primary" />
+                </div>
+              </TableCell>
+              <TableCell className="font-mono text-sm text-foreground">
+                {account.paxos_account_id?.slice(0, 16)}...
+              </TableCell>
+              <TableCell className="font-mono text-sm text-muted-foreground">
+                {account.paxos_identity_id?.slice(0, 12)}...
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {account.description || '—'}
+              </TableCell>
+              <TableCell>
+                {account.paxos_profile_id ? (
+                  <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success">
+                    Has Profile
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell className="text-right text-sm text-muted-foreground">
                 {new Date(account.created_at).toLocaleDateString()}
-              </p>
-              {account.paxos_profile_id && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success">
-                  Has Profile
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };

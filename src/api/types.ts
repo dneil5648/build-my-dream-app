@@ -254,6 +254,7 @@ export interface PaxosAccount {
   paxos_identity_id: string;
   paxos_profile_id: string;
   user_id: string;
+  description?: string;
   status?: string;
   created_at: string;
   updated_at: string;
