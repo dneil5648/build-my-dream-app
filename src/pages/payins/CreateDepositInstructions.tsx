@@ -115,7 +115,7 @@ const CreateDepositInstructions: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="WIRE">WIRE</SelectItem>
-                  <SelectItem value="ACH">ACH</SelectItem>
+                  <SelectItem value="CBIT">CBIT</SelectItem>
                   <SelectItem value="CBIT">CBIT</SelectItem>
                   <SelectItem value="DBS_ACT">DBS ACT</SelectItem>
                   <SelectItem value="CUBIX">CUBIX</SelectItem>

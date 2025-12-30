@@ -293,21 +293,46 @@ export interface AccountBalancesResponse {
 
 // ============= Fiat Types =============
 
-export type FiatNetwork = 'WIRE' | 'ACH' | 'CBIT' | 'DBS_ACT' | 'CUBIX' | 'SCB';
+export type FiatNetwork = 'WIRE' | 'CBIT' | 'DBS_ACT' | 'CUBIX' | 'SCB';
 export type AccountType = 'CHECKING' | 'SAVINGS';
+export type RoutingNumberType = 'ABA' | 'SWIFT' | 'IBAN';
 
-export interface RoutingDetails {
-  routing_number: string;
-  account_number: string;
+// Address structure for fiat accounts (matches Paxos format)
+export interface FiatAddressInput {
+  country: string;     // ISO country code (e.g., "US", "GB", "SG")
+  address1: string;    // Primary street address
+  address2?: string;   // Secondary address (apt, suite, etc.) - Optional
+  city: string;        // City name
+  province: string;    // State/Province code (e.g., "NY", "CA", "TX")
+  zip_code: string;    // Postal/ZIP code
 }
 
+// Routing details for WIRE network
+export interface FiatRoutingDetails {
+  routing_number_type: RoutingNumberType;
+  routing_number: string;
+  bank_name: string;
+  bank_address: FiatAddressInput;
+}
+
+// Register Fiat Account Request (WIRE network)
 export interface RegisterFiatAccountRequest {
   account_id: string;
   fiat_network: FiatNetwork;
-  account_type: AccountType;
-  description: string;
-  routing_details: RoutingDetails;
-  address: Address;
+  description?: string;
+  account_owner_address: FiatAddressInput;
+  // WIRE-specific fields
+  wire_account_number?: string;
+  routing_details?: FiatRoutingDetails;
+  intermediary_routing?: FiatRoutingDetails;
+  // CBIT-specific
+  cbit_wallet_address?: string;
+  // DBS_ACT-specific
+  dbs_act_account_number?: string;
+  // CUBIX-specific
+  cubix_account_id?: string;
+  // SCB-specific
+  scb_account_number?: string;
 }
 
 export interface FiatAccount {
@@ -315,9 +340,12 @@ export interface FiatAccount {
   account_id: string;
   paxos_fiat_account_id: string;
   network: string;
-  description: string;
+  description?: string;
   status: string;
   user_id: string;
+  wire_account_number?: string;
+  routing_number?: string;
+  bank_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -354,7 +382,7 @@ export interface CreateSandboxDepositRequest {
 
 // ============= Crypto Types =============
 
-export type CryptoNetwork = 'BITCOIN' | 'ETHEREUM' | 'SOLANA' | 'POLYGON' | 'TRON';
+export type CryptoNetwork = 'BITCOIN' | 'ETHEREUM' | 'SOLANA' | 'POLYGON' | 'TRON' | 'LITECOIN';
 
 export interface CreateCryptoAddressRequest {
   account_id: string;
@@ -367,13 +395,17 @@ export interface CreateCryptoAddressRequest {
 
 export interface CryptoAddress {
   id: string;
+  crypto_address_id?: string;
   network: string;
   wallet_address: string;
   paxos_account_id: string;
+  account_id: string;
   user_id: string;
   source_asset?: string;
   destination_asset?: string;
   destination_type?: string;
+  fiat_account_id?: string;
+  crypto_destination_id?: string;
   created_at?: string;
   status?: string;
 }
@@ -383,6 +415,29 @@ export interface CryptoWithdrawalFeeRequest {
   amount: string;
   network: CryptoNetwork;
   destination_address: string;
+}
+
+// ============= Crypto Destination Address Types =============
+
+export interface CreateCryptoDestinationAddressRequest {
+  account_id: string;
+  crypto_network: CryptoNetwork;
+  address: string;
+  label?: string;
+}
+
+export interface CryptoDestinationAddress {
+  id: string;
+  destination_address_id?: string;
+  account_id: string;
+  paxos_account_id: string;
+  crypto_network: string;
+  address: string;
+  label?: string;
+  status: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // ============= Asset Operations Types =============
