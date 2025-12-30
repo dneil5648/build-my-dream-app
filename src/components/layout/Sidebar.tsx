@@ -14,7 +14,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import paxosLogo from '@/assets/paxos-logo.svg';
+import paxosLogo from '@/assets/paxos-logo.png';
 
 interface SidebarProps {
   collapsed: boolean;
