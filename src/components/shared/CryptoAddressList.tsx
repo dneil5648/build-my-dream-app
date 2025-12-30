@@ -25,22 +25,22 @@ export const CryptoAddressList: React.FC<CryptoAddressListProps> = ({
 
   const getNetworkLabel = (network: string) => {
     const labels: Record<string, string> = {
-      BITCOIN: 'Bitcoin',
       ETHEREUM: 'Ethereum',
-      POLYGON: 'Polygon',
       SOLANA: 'Solana',
-      TRON: 'Tron',
+      STELLAR: 'Stellar',
+      BASE: 'Base',
+      POLYGON: 'Polygon',
     };
     return labels[network] || network;
   };
 
   const getAssetFromNetwork = (network: string): string => {
     const mapping: Record<string, string> = {
-      BITCOIN: 'BTC',
-      ETHEREUM: 'ETH',
-      POLYGON: 'USDC',
+      ETHEREUM: 'USDC',
       SOLANA: 'USDC',
-      TRON: 'USDT',
+      STELLAR: 'USDC',
+      BASE: 'USDC',
+      POLYGON: 'USDC',
     };
     return mapping[network] || 'CRYPTO';
   };

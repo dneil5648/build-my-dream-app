@@ -382,7 +382,7 @@ export interface CreateSandboxDepositRequest {
 
 // ============= Crypto Types =============
 
-export type CryptoNetwork = 'BITCOIN' | 'ETHEREUM' | 'SOLANA' | 'POLYGON' | 'TRON' | 'LITECOIN';
+export type CryptoNetwork = 'ETHEREUM' | 'SOLANA' | 'STELLAR' | 'BASE' | 'POLYGON';
 
 export interface CreateCryptoAddressRequest {
   account_id: string;
