@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, Wallet, Plus, Loader2 } from 'lucide-react';
-import { BalanceCard } from '@/components/shared/BalanceCard';
+import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, Plus, Loader2 } from 'lucide-react';
+import { BalancesTable } from '@/components/shared/BalancesTable';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
 import { AccountSelector } from '@/components/shared/AccountSelector';
 import { WalletOnboardingWizard } from '@/components/shared/WalletOnboardingWizard';
@@ -134,33 +134,14 @@ const CryptoWallet: React.FC = () => {
         </div>
       </div>
 
-      {/* Balances Grid */}
-      <div>
+      {/* Balances Table */}
+      <div className="glass rounded-xl p-6">
         <h3 className="text-lg font-semibold text-foreground mb-4">Your Assets</h3>
-        {loadingBalances ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        ) : balances.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground glass rounded-xl">
-            <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No assets found</p>
-            <p className="text-sm">Deposit funds to get started</p>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {balances.map((balance) => (
-              <BalanceCard
-                key={balance.asset}
-                asset={balance.asset}
-                balance={balance.available}
-                usdValue={`$${parseFloat(balance.available).toLocaleString()}`}
-                change={balance.trading !== '0' ? `${balance.trading} in trading` : ''}
-                changeType="neutral"
-              />
-            ))}
-          </div>
-        )}
+        <BalancesTable 
+          balances={balances} 
+          isLoading={loadingBalances}
+          emptyMessage="No assets found"
+        />
       </div>
 
       {/* Recent Activity */}
