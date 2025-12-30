@@ -9,6 +9,20 @@ import {
   ApiResponse,
 } from '../types';
 
+// Default backend URL for when no config is set
+const DEFAULT_BACKEND_URL = 'https://glossiest-junko-tangential.ngrok-free.dev';
+
+const getBaseUrl = (): string => {
+  const config = getApiConfig();
+  if (config?.baseUrl) {
+    return config.baseUrl;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return '';
+  }
+  return DEFAULT_BACKEND_URL;
+};
+
 export const authService = {
   // Login - backend expects form data
   login: async (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
@@ -18,8 +32,7 @@ export const authService = {
     formData.append('password', credentials.password);
 
     const token = localStorage.getItem('auth_token');
-    const config = getApiConfig();
-    const baseUrl = config?.baseUrl || '';
+    const baseUrl = getBaseUrl();
 
     const headers: HeadersInit = {
       'Content-Type': 'application/x-www-form-urlencoded',

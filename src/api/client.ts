@@ -38,13 +38,23 @@ export const clearAuthToken = (): void => {
   localStorage.removeItem('auth_token');
 };
 
+// Default backend URL for when no config is set
+const DEFAULT_BACKEND_URL = 'https://glossiest-junko-tangential.ngrok-free.dev';
+
 // Base API client
 class ApiClient {
   private getBaseUrl(): string {
-    // In development, use empty string to leverage Vite proxy
-    // In production, use configured baseUrl or default to empty (same origin)
     const config = getApiConfig();
-    return config?.baseUrl || '';
+    // If config has a baseUrl, use it
+    if (config?.baseUrl) {
+      return config.baseUrl;
+    }
+    // In local development (localhost), use empty string to leverage Vite proxy
+    // Otherwise, use the default backend URL directly
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      return '';
+    }
+    return DEFAULT_BACKEND_URL;
   }
 
   private async request<T>(
