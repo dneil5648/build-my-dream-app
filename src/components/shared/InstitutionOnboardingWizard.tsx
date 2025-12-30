@@ -16,7 +16,9 @@ import {
   EMPLOYMENT_STATUSES,
   SOURCE_OF_WEALTH,
   SOURCE_OF_FUNDS,
+  MEMBER_ROLES,
 } from '@/lib/constants';
+import { Checkbox } from '@/components/ui/checkbox';
 import { getModuleIdentityConfig } from '@/pages/config/ConfigPage';
 
 interface InstitutionOnboardingWizardProps {
@@ -78,6 +80,22 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
   const [bizIndustrySector, setBizIndustrySector] = useState('');
   const [bizPurpose, setBizPurpose] = useState('');
   const [bizSourceOfFunds, setBizSourceOfFunds] = useState('');
+
+  // Representative Member Details
+  const [repRoles, setRepRoles] = useState<string[]>(['BENEFICIAL_OWNER']);
+  const [repPosition, setRepPosition] = useState('');
+  const [repOwnership, setRepOwnership] = useState('');
+
+  type MemberRole = 'BENEFICIAL_OWNER' | 'ACCOUNT_OPENER' | 'TRUSTEE' | 'AUTHORIZED_USER' |
+    'GRANTOR' | 'MANAGEMENT_CONTROL_PERSON' | 'BENEFICIARY';
+
+  const toggleRole = (role: string) => {
+    setRepRoles(prev => 
+      prev.includes(role) 
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    );
+  };
 
   const steps: Step[] = ['rep-info', 'rep-address', 'rep-cdd', 'biz-info', 'biz-address', 'biz-details', 'review'];
   const currentStepIndex = steps.indexOf(step);
@@ -184,9 +202,9 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
       },
       institution_members: [{
         identity_id: personIdentityId,
-        roles: ['BENEFICIAL_OWNER', 'ACCOUNT_OPENER'],
-        ownership: '100',
-        position: 'Authorized Representative',
+        roles: repRoles as MemberRole[],
+        ownership: repOwnership || '100',
+        position: repPosition || 'Authorized Representative',
       }],
       customer_due_diligence: {
         industry_sector: bizIndustrySector || bizSubType,
@@ -822,6 +840,57 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-border">
+              <div className="flex items-center gap-2 mb-4">
+                <User className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground">Representative Membership Details</span>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Roles *</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MEMBER_ROLES.map((role) => (
+                      <div key={role.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={role.value}
+                          checked={repRoles.includes(role.value)}
+                          onCheckedChange={() => toggleRole(role.value)}
+                        />
+                        <Label htmlFor={role.value} className="text-sm font-normal cursor-pointer">
+                          {role.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Position</Label>
+                    <Input
+                      value={repPosition}
+                      onChange={(e) => setRepPosition(e.target.value)}
+                      placeholder="e.g., CEO, Director"
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ownership %</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={repOwnership}
+                      onChange={(e) => setRepOwnership(e.target.value)}
+                      placeholder="e.g., 51"
+                      className="bg-secondary border-border"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
