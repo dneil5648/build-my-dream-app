@@ -3,15 +3,14 @@ import {
   Transaction,
   TransactionQueryParams,
   ApiResponse,
-  PaginatedResponse,
+  TransactionsApiResponse,
 } from '../types';
 
 export const transactionsService = {
   // List all transactions
-  listTransactions: async (params?: TransactionQueryParams): Promise<PaginatedResponse<Transaction>> => {
-    const response = await apiClient.get<Transaction[]>('/transactions', params as Record<string, unknown>);
-    // The API returns pagination metadata, adapt the response
-    return response as unknown as PaginatedResponse<Transaction>;
+  listTransactions: async (params?: TransactionQueryParams): Promise<TransactionsApiResponse> => {
+    const response = await apiClient.get<TransactionsApiResponse>('/transactions', params as Record<string, unknown>);
+    return response as unknown as TransactionsApiResponse;
   },
 
   // Get transaction by ID

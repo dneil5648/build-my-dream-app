@@ -20,15 +20,15 @@ const CryptoWallet: React.FC = () => {
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse } = useIdentities();
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
-  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ limit: 4 });
+  const { transactions: allTransactions, isLoading: loadingTransactions } = useTransactions({ limit: 4 });
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
-  const transactions = (transactionsResponse?.data || []).filter(
-    (tx: Transaction) => tx.type === 'deposit' || tx.type === 'withdrawal'
+  const transactions = allTransactions.filter(
+    (tx: Transaction) => tx.transaction_type === 'CRYPTO_DEPOSIT' || tx.transaction_type === 'CRYPTO_WITHDRAWAL'
   );
 
   React.useEffect(() => {
@@ -170,9 +170,9 @@ const CryptoWallet: React.FC = () => {
               >
                 <div className="flex items-center gap-3">
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    tx.type === 'deposit' ? 'bg-success/20' : 'bg-warning/20'
+                    tx.transaction_type === 'CRYPTO_DEPOSIT' ? 'bg-success/20' : 'bg-warning/20'
                   }`}>
-                    {tx.type === 'deposit' ? (
+                    {tx.transaction_type === 'CRYPTO_DEPOSIT' ? (
                       <ArrowDownToLine className={`h-5 w-5 text-success`} />
                     ) : (
                       <ArrowUpFromLine className={`h-5 w-5 text-warning`} />
@@ -180,10 +180,10 @@ const CryptoWallet: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-medium text-foreground">
-                      {tx.type === 'deposit' ? '+' : '-'}{tx.amount} {tx.source_asset}
+                      {tx.transaction_type === 'CRYPTO_DEPOSIT' ? '+' : '-'}{tx.amount} {tx.source_asset}
                     </p>
                     <p className="text-sm text-muted-foreground capitalize">
-                      {tx.type} • {new Date(tx.created_at).toLocaleDateString()}
+                      {tx.transaction_type.replace('_', ' ').toLowerCase()} • {new Date(tx.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>

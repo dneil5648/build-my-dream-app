@@ -14,7 +14,28 @@ export interface PaginatedResponse<T> {
     page: number;
     limit: number;
     total: number;
+    total_count?: number;
     totalPages: number;
+    total_pages?: number;
+    has_next_page?: boolean;
+    has_prev_page?: boolean;
+  };
+}
+
+// Transactions API response format (matches API spec)
+export interface TransactionsApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    transactions: Transaction[];
+    pagination: {
+      page: number;
+      limit: number;
+      total_count: number;
+      total_pages: number;
+      has_next_page: boolean;
+      has_prev_page: boolean;
+    };
   };
 }
 
@@ -462,18 +483,33 @@ export interface WithdrawAssetRequest {
 
 // ============= Transaction Types =============
 
-export type TransactionStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
-export type TransactionType = 'deposit' | 'withdrawal' | 'conversion' | 'transfer';
+export type TransactionStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+export type TransactionType = 
+  | 'CRYPTO_DEPOSIT' 
+  | 'CRYPTO_WITHDRAWAL' 
+  | 'WIRE_DEPOSIT' 
+  | 'WIRE_WITHDRAWAL'
+  | 'INTERNAL_TRANSFER_DEBIT'
+  | 'INTERNAL_TRANSFER_CREDIT'
+  | 'CONVERSION'
+  | 'BANK_DEPOSIT'
+  | 'BANK_WITHDRAWAL';
 
 export interface Transaction {
   id: string;
-  type: TransactionType;
-  status: TransactionStatus;
+  account_id: string;
+  paxos_transfer_id?: string;
+  paxos_orchestration_id?: string;
+  ref_id?: string;
+  transaction_type: TransactionType;
+  transfer_type?: string;
   source_asset: string;
   destination_asset: string;
   amount: string;
   fee?: string;
-  account_id: string;
+  status: TransactionStatus;
+  secondary_status?: string;
+  orchestration_rule_id?: string;
   user_id: string;
   created_at: string;
   updated_at: string;
@@ -497,4 +533,8 @@ export interface IdentityQueryParams extends ListQueryParams {
 
 export interface TransactionQueryParams extends ListQueryParams {
   type?: TransactionType;
+  transaction_type?: TransactionType;
+  source_asset?: string;
+  destination_asset?: string;
+  order?: 'ASC' | 'DESC';
 }

@@ -26,7 +26,11 @@ const PayoutsDashboard: React.FC = () => {
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
   const { data: fiatAccountsResponse, isLoading: loadingFiatAccounts } = useFiatAccounts();
-  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ limit: 5 });
+  const { transactions: allTransactions, isLoading: loadingTransactions } = useTransactions({ 
+    limit: 10,
+    sort: 'created_at',
+    order: 'DESC'
+  });
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();
 
@@ -34,8 +38,8 @@ const PayoutsDashboard: React.FC = () => {
   const identities = identitiesResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
   const fiatAccounts = fiatAccountsResponse?.data || [];
-  const payouts = (transactionsResponse?.data || []).filter(
-    (tx: Transaction) => tx.type === 'withdrawal'
+  const payouts = allTransactions.filter(
+    (tx: Transaction) => tx.transaction_type === 'CRYPTO_WITHDRAWAL' || tx.transaction_type === 'WIRE_WITHDRAWAL' || tx.transaction_type === 'BANK_WITHDRAWAL'
   );
 
   // Get module config and check for institution identity
@@ -185,20 +189,20 @@ const PayoutsDashboard: React.FC = () => {
             <StatCard
               title="Total Payouts"
               value={loadingTransactions ? '...' : `$${payouts.reduce((sum, tx) => sum + parseFloat(tx.amount || '0'), 0).toLocaleString()}`}
-              change={payouts.filter(tx => tx.status === 'completed').length + ' completed'}
+              change={payouts.filter(tx => tx.status === 'COMPLETED').length + ' completed'}
               changeType="positive"
               icon={ArrowUpFromLine}
             />
             <StatCard
               title="Pending"
-              value={loadingTransactions ? '...' : payouts.filter(tx => tx.status === 'pending').length.toString()}
-              change={payouts.filter(tx => tx.status === 'pending').length + ' in progress'}
+              value={loadingTransactions ? '...' : payouts.filter(tx => tx.status === 'PENDING').length.toString()}
+              change={payouts.filter(tx => tx.status === 'PENDING').length + ' in progress'}
               changeType="neutral"
               icon={Clock}
             />
             <StatCard
               title="Completed"
-              value={loadingTransactions ? '...' : payouts.filter(tx => tx.status === 'completed').length.toString()}
+              value={loadingTransactions ? '...' : payouts.filter(tx => tx.status === 'COMPLETED').length.toString()}
               change="Recent transactions"
               changeType="positive"
               icon={CheckCircle2}
