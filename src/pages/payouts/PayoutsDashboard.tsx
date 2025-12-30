@@ -235,9 +235,9 @@ const PayoutsDashboard: React.FC = () => {
                         <Building2 className="h-5 w-5 text-module-payouts" />
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">{account.fiat_network_name || account.network}</p>
+                        <p className="font-medium text-foreground">{account.network}</p>
                         <p className="text-sm text-muted-foreground">
-                          {account.fiat_account_id.slice(0, 12)}...
+                          {account.paxos_fiat_account_id.slice(0, 12)}...
                         </p>
                       </div>
                     </div>

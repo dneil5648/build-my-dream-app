@@ -221,27 +221,29 @@ const WhiteLabelWallet: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {recentActivity.map((tx: Transaction) => {
-                const txType = tx.type === 'deposit' ? 'receive' : tx.type === 'withdrawal' ? 'send' : tx.type;
+                const isDeposit = tx.type === 'deposit';
+                const isWithdrawal = tx.type === 'withdrawal';
+                const isConversion = tx.type === 'conversion';
+                const displayType = isDeposit ? 'receive' : isWithdrawal ? 'send' : tx.type;
+                
                 return (
                   <div key={tx.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        txType === 'receive' || txType === 'deposit' ? 'bg-success/20' :
-                        txType === 'send' || txType === 'withdrawal' ? 'bg-warning/20' : 'bg-module-whitelabel/20'
+                        isDeposit ? 'bg-success/20' :
+                        isWithdrawal ? 'bg-warning/20' : 'bg-module-whitelabel/20'
                       }`}>
-                        {(txType === 'receive' || txType === 'deposit') && <ArrowDownToLine className="h-5 w-5 text-success" />}
-                        {(txType === 'send' || txType === 'withdrawal') && <ArrowUpFromLine className="h-5 w-5 text-warning" />}
-                        {txType === 'conversion' && <RefreshCw className="h-5 w-5 text-module-whitelabel" />}
+                        {isDeposit && <ArrowDownToLine className="h-5 w-5 text-success" />}
+                        {isWithdrawal && <ArrowUpFromLine className="h-5 w-5 text-warning" />}
+                        {isConversion && <RefreshCw className="h-5 w-5 text-module-whitelabel" />}
                       </div>
                       <div>
-                        <p className="font-medium text-foreground capitalize">{txType}</p>
+                        <p className="font-medium text-foreground capitalize">{displayType}</p>
                         <p className="text-sm text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
                       </div>
                     </div>
-                    <p className={`font-semibold ${
-                      txType === 'receive' || txType === 'deposit' ? 'text-success' : 'text-foreground'
-                    }`}>
-                      {txType === 'deposit' || txType === 'receive' ? '+' : '-'}{tx.amount} {tx.source_asset}
+                    <p className={`font-semibold ${isDeposit ? 'text-success' : 'text-foreground'}`}>
+                      {isDeposit ? '+' : '-'}{tx.amount} {tx.source_asset}
                     </p>
                   </div>
                 );

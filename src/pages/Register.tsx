@@ -25,7 +25,7 @@ const Register: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await register(email, password, name);
+      await register(email, password);
       toast.success('Account created successfully!');
     } catch (error) {
       toast.error('Registration failed');
