@@ -43,15 +43,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
     >
       <div className="flex h-full flex-col">
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-primary/20">
+        <div className="flex h-20 items-center justify-center px-3 border-b border-primary/20">
           {!collapsed && (
-            <div className="flex items-center">
-              <img src={paxosLogo} alt="Paxos" className="h-12 w-auto" />
-            </div>
+            <img src={paxosLogo} alt="Paxos" className="w-full max-w-[200px] h-auto" />
           )}
           {collapsed && (
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center mx-auto">
-              <span className="text-primary-foreground font-bold text-sm">P</span>
+            <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold">P</span>
             </div>
           )}
         </div>
