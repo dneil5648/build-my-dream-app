@@ -7,34 +7,34 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 5000,
+    port: 8080,
     proxy: {
       '/users': {
-        target: 'http://localhost:8080',
+        target: 'https://glossiest-junko-tangential.ngrok-free.dev',
         changeOrigin: true,
       },
       '/admin': {
-        target: 'http://localhost:8080',
+        target: 'https://glossiest-junko-tangential.ngrok-free.dev',
         changeOrigin: true,
       },
       '/entities': {
-        target: 'http://localhost:8080',
+        target: 'https://glossiest-junko-tangential.ngrok-free.dev',
         changeOrigin: true,
       },
       '/crypto': {
-        target: 'http://localhost:8080',
+        target: 'https://glossiest-junko-tangential.ngrok-free.dev',
         changeOrigin: true,
       },
       '/fiat': {
-        target: 'http://localhost:8080',
+        target: 'https://glossiest-junko-tangential.ngrok-free.dev',
         changeOrigin: true,
       },
       '/assets': {
-        target: 'http://localhost:8080',
+        target: 'https://glossiest-junko-tangential.ngrok-free.dev',
         changeOrigin: true,
       },
       '/transactions': {
-        target: 'http://localhost:8080',
+        target: 'https://glossiest-junko-tangential.ngrok-free.dev',
         changeOrigin: true,
       },
     },
