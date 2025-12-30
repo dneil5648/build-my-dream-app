@@ -1,10 +1,10 @@
 import React from 'react';
 import { Loader2, Wallet } from 'lucide-react';
 import { AssetIcon } from './AssetIcon';
-import { AccountBalance } from '@/api/types';
+import { AccountBalanceItem } from '@/api/types';
 
 interface AccountBalancesCardProps {
-  balances: AccountBalance[];
+  balances: AccountBalanceItem[];
   isLoading?: boolean;
 }
 
@@ -47,7 +47,7 @@ export const AccountBalancesCard: React.FC<AccountBalancesCardProps> = ({
             </div>
           </div>
           <div className="text-right">
-            <p className="font-semibold text-foreground">{balance.total}</p>
+            <p className="font-semibold text-foreground">{balance.available}</p>
             {balance.trading !== '0' && (
               <p className="text-sm text-muted-foreground">
                 In Trading: {balance.trading}

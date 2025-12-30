@@ -27,7 +27,7 @@ const WhiteLabelWallet: React.FC = () => {
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
-  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
+  const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
   const recentActivity = transactionsResponse?.data || [];
 
   // Load white label config
@@ -82,7 +82,7 @@ const WhiteLabelWallet: React.FC = () => {
 
   // Calculate total from balances
   const totalValue = balances.reduce((sum, b) => {
-    const val = parseFloat(b.total) || 0;
+    const val = parseFloat(b.available) || 0;
     return sum + val;
   }, 0);
 
@@ -189,10 +189,10 @@ const WhiteLabelWallet: React.FC = () => {
                       )}
                       <div>
                         <p className="font-medium text-foreground">{getAssetDisplayName(item.asset)}</p>
-                        <p className="text-sm text-muted-foreground">{item.total}</p>
+                        <p className="text-sm text-muted-foreground">{item.available}</p>
                       </div>
                     </div>
-                    <p className="font-semibold text-foreground">${parseFloat(item.total).toLocaleString()}</p>
+                    <p className="font-semibold text-foreground">${parseFloat(item.available).toLocaleString()}</p>
                   </div>
                 );
               })}

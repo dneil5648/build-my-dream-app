@@ -41,7 +41,7 @@ const PayInsDashboard: React.FC = () => {
   );
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
-  const balances = Array.isArray(balancesResponse?.data) ? balancesResponse.data : [];
+  const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
   const cryptoAddresses = cryptoAddressesResponse?.data || [];
 
   // Get module config and check for institution identity
