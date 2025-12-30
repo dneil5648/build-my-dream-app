@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, History, Plus, Wallet, Loader2 } from 'lucide-react';
-import { AssetIcon } from '@/components/shared/AssetIcon';
+import { ArrowDownToLine, ArrowUpFromLine, RefreshCw, History, Plus, Loader2 } from 'lucide-react';
+import { BalancesTable } from '@/components/shared/BalancesTable';
 import { AccountSelector } from '@/components/shared/AccountSelector';
 import { WalletOnboardingWizard } from '@/components/shared/WalletOnboardingWizard';
 import { Button } from '@/components/ui/button';
@@ -160,44 +160,11 @@ const WhiteLabelWallet: React.FC = () => {
         {/* Assets */}
         <div className="glass rounded-2xl p-5">
           <h3 className="font-semibold text-foreground mb-4">Your Assets</h3>
-          {loadingBalances ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            </div>
-          ) : balances.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No assets found</p>
-              <p className="text-sm">Deposit funds to get started</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {balances.map((item) => {
-                const customColor = getAssetColor(item.asset);
-                return (
-                  <div key={item.asset} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {customColor ? (
-                        <div 
-                          className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                          style={{ backgroundColor: customColor }}
-                        >
-                          {getAssetDisplayName(item.asset).slice(0, 2).toUpperCase()}
-                        </div>
-                      ) : (
-                        <AssetIcon asset={item.asset} size="md" />
-                      )}
-                      <div>
-                        <p className="font-medium text-foreground">{getAssetDisplayName(item.asset)}</p>
-                        <p className="text-sm text-muted-foreground">{item.available}</p>
-                      </div>
-                    </div>
-                    <p className="font-semibold text-foreground">${parseFloat(item.available).toLocaleString()}</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <BalancesTable 
+            balances={balances} 
+            isLoading={loadingBalances}
+            emptyMessage="No assets found"
+          />
         </div>
 
         {/* Recent Activity */}
