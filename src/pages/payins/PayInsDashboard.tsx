@@ -352,7 +352,7 @@ const PayInsDashboard: React.FC = () => {
             <DialogTitle>Create Account</DialogTitle>
           </DialogHeader>
           <CreateAccountForm
-            identities={identities}
+            identities={institutionIdentity ? [institutionIdentity] : []}
             onSubmit={handleCreateAccount}
             isLoading={createAccount.isPending}
             module="PAY_INS"
