@@ -8,15 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
-import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity } from '@/api/types';
+import { useTransactions } from '@/hooks/useTransactions';
+import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, Transaction } from '@/api/types';
 import { getWhiteLabelConfig, WhiteLabelConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
-
-const mockActivity = [
-  { id: '1', type: 'receive', asset: 'BTC', amount: '+0.05 BTC', date: 'Today, 2:30 PM' },
-  { id: '2', type: 'send', asset: 'ETH', amount: '-0.5 ETH', date: 'Yesterday' },
-  { id: '3', type: 'swap', asset: 'USDC', amount: '+500 USDC', date: '2 days ago' },
-];
 
 const WhiteLabelWallet: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -26,12 +21,14 @@ const WhiteLabelWallet: React.FC = () => {
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse } = useIdentities();
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
+  const { data: transactionsResponse, isLoading: loadingTransactions } = useTransactions({ limit: 3 });
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const balances = balancesResponse?.data || [];
+  const recentActivity = transactionsResponse?.data || [];
 
   // Load white label config
   useEffect(() => {
@@ -211,37 +208,52 @@ const WhiteLabelWallet: React.FC = () => {
               See all
             </Link>
           </div>
-          <div className="space-y-4">
-            {mockActivity.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    tx.type === 'receive' ? 'bg-success/20' : 
-                    tx.type === 'send' ? 'bg-warning/20' : 'bg-module-whitelabel/20'
-                  }`}>
-                    {tx.type === 'receive' && <ArrowDownToLine className="h-5 w-5 text-success" />}
-                    {tx.type === 'send' && <ArrowUpFromLine className="h-5 w-5 text-warning" />}
-                    {tx.type === 'swap' && <RefreshCw className="h-5 w-5 text-module-whitelabel" />}
+          {loadingTransactions ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : recentActivity.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No recent activity</p>
+              <p className="text-sm">Transactions will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recentActivity.map((tx: Transaction) => {
+                const txType = tx.type === 'deposit' ? 'receive' : tx.type === 'withdrawal' ? 'send' : tx.type;
+                return (
+                  <div key={tx.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                        txType === 'receive' || txType === 'deposit' ? 'bg-success/20' :
+                        txType === 'send' || txType === 'withdrawal' ? 'bg-warning/20' : 'bg-module-whitelabel/20'
+                      }`}>
+                        {(txType === 'receive' || txType === 'deposit') && <ArrowDownToLine className="h-5 w-5 text-success" />}
+                        {(txType === 'send' || txType === 'withdrawal') && <ArrowUpFromLine className="h-5 w-5 text-warning" />}
+                        {txType === 'conversion' && <RefreshCw className="h-5 w-5 text-module-whitelabel" />}
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground capitalize">{txType}</p>
+                        <p className="text-sm text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <p className={`font-semibold ${
+                      txType === 'receive' || txType === 'deposit' ? 'text-success' : 'text-foreground'
+                    }`}>
+                      {txType === 'deposit' || txType === 'receive' ? '+' : '-'}{tx.amount} {tx.source_asset}
+                    </p>
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground capitalize">{tx.type}</p>
-                    <p className="text-sm text-muted-foreground">{tx.date}</p>
-                  </div>
-                </div>
-                <p className={`font-semibold ${
-                  tx.type === 'receive' || tx.type === 'swap' ? 'text-success' : 'text-foreground'
-                }`}>
-                  {tx.amount}
-                </p>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Wallet Onboarding Dialog */}
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+        <DialogContent className="max-w-3xl bg-card border-border">
           <DialogHeader>
             <DialogTitle>Create New Wallet</DialogTitle>
           </DialogHeader>

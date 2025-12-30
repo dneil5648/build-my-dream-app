@@ -7,7 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { toast } from 'sonner';
-import { useAccounts } from '@/hooks/useAccounts';
+import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
+import { useCalculateWithdrawalFee } from '@/hooks/useCrypto';
+import { useWithdrawAssets } from '@/hooks/useAssets';
+import { CryptoNetwork } from '@/api/types';
 
 const TreasuryWithdraw: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -18,28 +21,66 @@ const TreasuryWithdraw: React.FC = () => {
     network: '',
   });
   const [fee, setFee] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const { data: accountsResponse } = useAccounts();
-  const accounts = accountsResponse?.data || [];
+  const { data: balancesResponse } = useAccountBalances(formData.account);
+  const calculateFee = useCalculateWithdrawalFee();
+  const withdrawAssets = useWithdrawAssets();
 
-  const balances: Record<string, string> = {
-    BTC: '2.45678',
-    ETH: '15.8921',
-    USDC: '50,000.00',
-  };
+  const accounts = accountsResponse?.data || [];
+  const balances = balancesResponse?.data || [];
 
   const handleCalculateFee = async () => {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setFee('0.0005');
+    if (!formData.account || !formData.asset || !formData.network || !formData.amount || !formData.destination) {
+      return;
+    }
+
+    try {
+      const result = await calculateFee.mutateAsync({
+        asset: formData.asset,
+        network: formData.network as CryptoNetwork,
+        amount: formData.amount,
+        destination_address: formData.destination,
+      });
+
+      if (result.success && result.data) {
+        setFee(result.data.fee);
+      }
+    } catch (error) {
+      toast.error('Failed to calculate fee');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setLoading(false);
-    toast.success('Withdrawal initiated successfully');
+
+    if (!formData.account || !formData.asset || !formData.destination || !formData.amount || !formData.network) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      await withdrawAssets.mutateAsync({
+        account_id: formData.account,
+        source_asset: formData.asset,
+        destination_asset: formData.asset, // Same asset (no conversion)
+        destination_address: formData.destination,
+        amount: formData.amount,
+        network: formData.network as CryptoNetwork,
+      });
+      toast.success('Withdrawal initiated successfully');
+      // Reset form
+      setFormData({
+        account: formData.account,
+        asset: '',
+        destination: '',
+        amount: '',
+        network: '',
+      });
+      setFee(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to initiate withdrawal');
+    }
   };
 
   return (
@@ -79,38 +120,29 @@ const TreasuryWithdraw: React.FC = () => {
 
         <div className="space-y-2">
           <Label>Asset</Label>
-          <Select value={formData.asset} onValueChange={(v) => { setFormData({...formData, asset: v, network: ''}); handleCalculateFee(); }}>
+          <Select
+            value={formData.asset}
+            onValueChange={(v) => { setFormData({...formData, asset: v, network: ''}); setFee(null); }}
+            disabled={!formData.account}
+          >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select asset" />
+              <SelectValue placeholder={formData.account ? 'Select asset' : 'Select account first'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="BTC">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="BTC" size="sm" />
-                    Bitcoin (BTC)
+              {balances.map((balance) => (
+                <SelectItem key={balance.asset} value={balance.asset}>
+                  <div className="flex items-center justify-between w-full gap-4">
+                    <div className="flex items-center gap-2">
+                      <AssetIcon asset={balance.asset} size="sm" />
+                      {balance.asset}
+                    </div>
+                    <span className="text-muted-foreground">{balance.available}</span>
                   </div>
-                  <span className="text-muted-foreground">{balances.BTC}</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="ETH">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="ETH" size="sm" />
-                    Ethereum (ETH)
-                  </div>
-                  <span className="text-muted-foreground">{balances.ETH}</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="USDC">
-                <div className="flex items-center justify-between w-full gap-4">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="USDC" size="sm" />
-                    USD Coin (USDC)
-                  </div>
-                  <span className="text-muted-foreground">{balances.USDC}</span>
-                </div>
-              </SelectItem>
+                </SelectItem>
+              ))}
+              {balances.length === 0 && formData.account && (
+                <SelectItem value="" disabled>No assets available</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -163,13 +195,18 @@ const TreasuryWithdraw: React.FC = () => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Amount</Label>
-            {formData.asset && (
-              <button 
+            {formData.asset && balances.find(b => b.asset === formData.asset) && (
+              <button
                 type="button"
                 className="text-xs text-primary hover:underline"
-                onClick={() => setFormData({...formData, amount: balances[formData.asset] || ''})}
+                onClick={() => {
+                  const balance = balances.find(b => b.asset === formData.asset);
+                  if (balance) {
+                    setFormData({...formData, amount: balance.available});
+                  }
+                }}
               >
-                Max: {balances[formData.asset]}
+                Max: {balances.find(b => b.asset === formData.asset)?.available}
               </button>
             )}
           </div>
@@ -197,13 +234,13 @@ const TreasuryWithdraw: React.FC = () => {
           </div>
         )}
 
-        <Button 
-          type="submit" 
-          disabled={loading || !formData.amount || !formData.destination || !formData.network} 
+        <Button
+          type="submit"
+          disabled={withdrawAssets.isPending || !formData.amount || !formData.destination || !formData.network}
           className="w-full bg-warning hover:bg-warning/90 text-warning-foreground"
         >
           <ArrowUpFromLine className="h-4 w-4 mr-2" />
-          {loading ? 'Processing...' : 'Withdraw'}
+          {withdrawAssets.isPending ? 'Processing...' : 'Withdraw'}
         </Button>
       </form>
     </div>

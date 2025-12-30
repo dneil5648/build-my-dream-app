@@ -1,17 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authService } from '@/api/services/auth';
+import { getAuthToken, clearAuthToken } from '@/api/client';
+import { User as ApiUser } from '@/api/types';
 
 interface User {
   id: string;
-  email: string;
-  name: string;
+  user_name: string;
+  role: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -35,46 +38,99 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check for existing session
-    const storedUser = localStorage.getItem('paxos_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    const checkAuth = async () => {
+      const token = getAuthToken();
+      const userId = localStorage.getItem('user_id');
+
+      if (token && userId) {
+        try {
+          // Fetch user details using stored user_id
+          const response = await authService.getUser(userId);
+          if (response.success && response.data) {
+            setUser({
+              id: response.data.id,
+              user_name: response.data.user_name,
+              role: response.data.role,
+            });
+          }
+        } catch (error) {
+          console.error('Failed to restore session:', error);
+          clearAuthToken();
+          localStorage.removeItem('user_id');
+        }
+      }
+      setIsLoading(false);
+    };
+
+    checkAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    // Mock login - in production, this would call the API
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      email,
-      name: email.split('@')[0],
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('paxos_user', JSON.stringify(mockUser));
-    localStorage.setItem('paxos_token', 'mock_jwt_token');
+  const login = async (username: string, password: string) => {
+    try {
+      const response = await authService.login({
+        user_name: username,
+        password: password,
+      });
+
+      console.log('Login response:', response);
+      console.log('Response data:', response.data);
+
+      if (response.success && response.data) {
+        // Backend returns { token, user_id }, need to fetch full user details
+        const userId = (response.data as { user_id?: string; token?: string }).user_id;
+
+        if (!userId) {
+          throw new Error('No user_id in login response');
+        }
+
+        // Fetch full user details using the user_id
+        const userResponse = await authService.getUser(userId);
+
+        if (userResponse.success && userResponse.data) {
+          // Store user_id for session restoration
+          localStorage.setItem('user_id', userResponse.data.id);
+
+          setUser({
+            id: userResponse.data.id,
+            user_name: userResponse.data.user_name,
+            role: userResponse.data.role,
+          });
+        } else {
+          throw new Error('Failed to fetch user details after login');
+        }
+      } else {
+        console.error('Login failed - response:', response);
+        throw new Error(`Login failed: ${response.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
-  const register = async (email: string, password: string, name: string) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser: User = {
-      id: '1',
-      email,
-      name,
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('paxos_user', JSON.stringify(mockUser));
-    localStorage.setItem('paxos_token', 'mock_jwt_token');
+  const register = async (username: string, password: string) => {
+    try {
+      const response = await authService.register({
+        user_name: username,
+        password: password,
+      });
+
+      if (response.success && response.data) {
+        // After registration, automatically log in
+        await login(username, password);
+      } else {
+        throw new Error('Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('paxos_user');
-    localStorage.removeItem('paxos_token');
+    localStorage.removeItem('user_id');
+    authService.logout();
   };
 
   return (

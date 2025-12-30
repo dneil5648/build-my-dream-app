@@ -33,8 +33,9 @@ const TreasuryDeposit: React.FC = () => {
         account_id: formData.account,
         network: formData.network as CryptoNetwork,
         source_asset: formData.asset,
+        destination_asset: formData.asset, // Same asset (no conversion)
       });
-      
+
       if (result.success && result.data) {
         setGeneratedAddress({
           address: result.data.wallet_address,
@@ -43,17 +44,7 @@ const TreasuryDeposit: React.FC = () => {
         toast.success('Deposit address created');
       }
     } catch (error) {
-      // Fallback to mock for demo purposes
-      const mockAddresses: Record<string, string> = {
-        BTC: 'bc1q9h7z9w8k3qx2p5v6t7y8u9i0o1k2l3m4n5b6v7c8x9z0',
-        ETH: '0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
-        USDC: '0x8ba1f109551bD432803012645Ac136ddd64DBA72',
-      };
-      setGeneratedAddress({
-        address: mockAddresses[formData.asset] || mockAddresses.BTC,
-        id: 'mock-' + Date.now(),
-      });
-      toast.success('Deposit address generated');
+      toast.error(error instanceof Error ? error.message : 'Failed to create deposit address');
     }
   };
 
