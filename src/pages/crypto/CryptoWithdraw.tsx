@@ -124,9 +124,44 @@ const CryptoWithdraw: React.FC = () => {
                   <span className="text-muted-foreground">{balances.USDC}</span>
                 </div>
               </SelectItem>
-            </SelectContent>
+        </SelectContent>
           </Select>
         </div>
+
+        {/* Network Selection for External Wallets */}
+        {formData.type === 'external' && formData.asset && (
+          <div className="space-y-2">
+            <Label>Network</Label>
+            <Select value={formData.network} onValueChange={(v) => { setFormData({...formData, network: v}); handleCalculateFee(); }}>
+              <SelectTrigger className="bg-secondary border-border">
+                <SelectValue placeholder="Select network" />
+              </SelectTrigger>
+              <SelectContent>
+                {formData.asset === 'BTC' && (
+                  <>
+                    <SelectItem value="BITCOIN">Bitcoin Network</SelectItem>
+                    <SelectItem value="LIGHTNING">Lightning Network</SelectItem>
+                  </>
+                )}
+                {formData.asset === 'ETH' && (
+                  <>
+                    <SelectItem value="ETHEREUM">Ethereum Network</SelectItem>
+                    <SelectItem value="ARBITRUM">Arbitrum</SelectItem>
+                    <SelectItem value="OPTIMISM">Optimism</SelectItem>
+                  </>
+                )}
+                {formData.asset === 'USDC' && (
+                  <>
+                    <SelectItem value="ETHEREUM">Ethereum Network</SelectItem>
+                    <SelectItem value="POLYGON">Polygon Network</SelectItem>
+                    <SelectItem value="SOLANA">Solana</SelectItem>
+                    <SelectItem value="ARBITRUM">Arbitrum</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label>{formData.type === 'external' ? 'Destination Address' : 'Destination Account'}</Label>
@@ -189,7 +224,7 @@ const CryptoWithdraw: React.FC = () => {
 
         <Button 
           type="submit" 
-          disabled={loading || !formData.amount || !formData.destination} 
+          disabled={loading || !formData.amount || !formData.destination || (formData.type === 'external' && !formData.network)} 
           className="w-full bg-warning hover:bg-warning/90 text-warning-foreground"
         >
           <ArrowUpFromLine className="h-4 w-4 mr-2" />
