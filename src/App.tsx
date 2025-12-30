@@ -31,6 +31,7 @@ import WhiteLabelWallet from "./pages/whitelabel/WhiteLabelWallet";
 
 const queryClient = new QueryClient();
 
+// Main application component with providers and routing
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
