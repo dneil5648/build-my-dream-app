@@ -14,6 +14,7 @@ import {
   SOURCE_OF_WEALTH,
   SOURCE_OF_FUNDS,
 } from '@/lib/constants';
+import { getModuleIdentityConfig } from '@/pages/config/ConfigPage';
 
 interface WalletOnboardingWizardProps {
   onCreateIdentity: (data: CreateIdentityRequest) => Promise<PaxosIdentity | void>;
@@ -124,6 +125,10 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
 
   const handleSubmit = async () => {
     try {
+      // Get IDV config for passthrough verification
+      const moduleConfig = getModuleIdentityConfig();
+      const idvVendor = moduleConfig.idvVendor;
+
       let identityIdForWallet: string | undefined;
 
       if (walletType === 'personal') {
@@ -132,7 +137,8 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
         } else {
           const individualData: CreateIdentityRequest = {
             person_details: {
-              verifier_type: 'PAXOS',
+              verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
+              passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
               first_name: firstName || undefined,
               last_name: lastName,
               email: email || undefined,
@@ -162,7 +168,8 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
         if (!useExistingIndividual) {
           const individualData: CreateIdentityRequest = {
             person_details: {
-              verifier_type: 'PAXOS',
+              verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
+              passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
               first_name: firstName || undefined,
               last_name: lastName,
               email: email || undefined,

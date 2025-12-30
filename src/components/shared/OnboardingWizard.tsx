@@ -14,6 +14,7 @@ import {
   SOURCE_OF_WEALTH,
   SOURCE_OF_FUNDS,
 } from '@/lib/constants';
+import { getModuleIdentityConfig } from '@/pages/config/ConfigPage';
 
 interface OnboardingWizardProps {
   onSubmit: (data: CreateIdentityRequest) => Promise<void>;
@@ -99,11 +100,16 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   const handleSubmit = async () => {
     if (!identityType) return;
 
+    // Get IDV config for passthrough verification
+    const moduleConfig = getModuleIdentityConfig();
+    const idvVendor = moduleConfig.idvVendor;
+
     if (identityType === 'INDIVIDUAL') {
       // Person identity - only verifier_type, last_name, and address are required
       const data: CreateIdentityRequest = {
         person_details: {
-          verifier_type: 'PAXOS',
+          verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
+          passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
           first_name: firstName || undefined,
           last_name: lastName,
           email: email || undefined,
