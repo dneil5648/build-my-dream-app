@@ -219,7 +219,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
   };
 
   return (
-    <div className="flex flex-col max-h-[70vh]">
+    <div className="flex flex-col max-h-[70vh] overflow-hidden">
       {/* Progress Steps */}
       {step !== 'wallet-type' && (
         <div className="flex-shrink-0 flex items-center justify-between mb-6 pb-4 border-b border-border">
@@ -250,7 +250,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
       )}
 
       {/* Step Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
         {/* WALLET TYPE */}
         {step === 'wallet-type' && (
           <div className="space-y-6">
