@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { CreateIdentityRequest, PaxosAddress, PaxosIdentity } from '@/api/types';
+import { CreateIdentityRequest, PaxosAddress, PaxosIdentity, ModuleName } from '@/api/types';
 import { 
   INDUSTRY_SECTORS, 
   CIP_ID_TYPES, 
@@ -26,6 +26,7 @@ interface InstitutionOnboardingWizardProps {
   onSubmit: (data: CreateIdentityRequest) => Promise<PaxosIdentity | void>;
   isLoading?: boolean;
   onCancel?: () => void;
+  module?: ModuleName;
 }
 
 type Step = 'rep-info' | 'rep-address' | 'rep-cdd' | 'biz-info' | 'biz-address' | 'biz-details' | 'review';
@@ -43,6 +44,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
   onSubmit,
   isLoading,
   onCancel,
+  module = 'TREASURY',
 }) => {
   const [step, setStep] = useState<Step>('rep-info');
 
@@ -146,33 +148,36 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
 
     // Step 1: Create representative (person) identity first
     const representativeData: CreateIdentityRequest = {
-      person_details: {
-        verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
-        passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
-        passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
-        passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
-        last_name: repLastName,
-        first_name: repFirstName || undefined,
-        email: repEmail || undefined,
-        phone_number: repPhone || undefined,
-        date_of_birth: repDateOfBirth || undefined,
-        cip_id: shouldIncludeRepCipId() ? repCipId : undefined,
-        cip_id_type: shouldIncludeRepCipId() ? repCipIdType as any : undefined,
-        cip_id_country: shouldIncludeRepCipId() ? repNationality : undefined,
-        nationality: repNationality || undefined,
-        address: repAddress,
+      identity_request: {
+        person_details: {
+          verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
+          passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
+          passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
+          passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
+          last_name: repLastName,
+          first_name: repFirstName || undefined,
+          email: repEmail || undefined,
+          phone_number: repPhone || undefined,
+          date_of_birth: repDateOfBirth || undefined,
+          cip_id: shouldIncludeRepCipId() ? repCipId : undefined,
+          cip_id_type: shouldIncludeRepCipId() ? repCipIdType as any : undefined,
+          cip_id_country: shouldIncludeRepCipId() ? repNationality : undefined,
+          nationality: repNationality || undefined,
+          address: repAddress,
+        },
+        tax_details: shouldIncludeRepCipId() ? [{
+          tax_payer_id: repCipId,
+          tax_payer_country: repNationality,
+          tin_verification_status: 'APPROVED',
+        }] : undefined,
+        customer_due_diligence: {
+          purpose_of_account: repPurposeOfAccount as any,
+          employment_status: repEmploymentStatus as any,
+          source_of_wealth: repSourceOfWealth as any,
+          source_of_funds: repSourceOfFunds as any,
+        },
       },
-      tax_details: shouldIncludeRepCipId() ? [{
-        tax_payer_id: repCipId,
-        tax_payer_country: repNationality,
-        tin_verification_status: 'APPROVED',
-      }] : undefined,
-      customer_due_diligence: {
-        purpose_of_account: repPurposeOfAccount as any,
-        employment_status: repEmploymentStatus as any,
-        source_of_wealth: repSourceOfWealth as any,
-        source_of_funds: repSourceOfFunds as any,
-      },
+      module,
     };
 
     // Create person identity and get the returned ID
@@ -185,41 +190,44 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
 
     // Step 2: Create institution identity with the person as a member
     const institutionData: CreateIdentityRequest = {
-      institution_details: {
-        name: bizName,
-        doing_business_as: bizDBA || undefined,
-        business_description: bizDescription || undefined,
-        email: bizEmail,
-        phone_number: bizPhone,
-        institution_type: bizType as any,
-        institution_sub_type: bizSubType,
-        cip_id: bizCipId,
-        cip_id_type: 'EIN',
-        cip_id_country: 'USA',
-        govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : '',
-        business_address: bizAddress,
-        incorporation_address: bizAddress, // Required by API
-        regulation_status: bizRegulationStatus as any,
-        trading_type: bizTradingType as any,
+      identity_request: {
+        institution_details: {
+          name: bizName,
+          doing_business_as: bizDBA || undefined,
+          business_description: bizDescription || undefined,
+          email: bizEmail,
+          phone_number: bizPhone,
+          institution_type: bizType as any,
+          institution_sub_type: bizSubType,
+          cip_id: bizCipId,
+          cip_id_type: 'EIN',
+          cip_id_country: 'USA',
+          govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : '',
+          business_address: bizAddress,
+          incorporation_address: bizAddress, // Required by API
+          regulation_status: bizRegulationStatus as any,
+          trading_type: bizTradingType as any,
+        },
+        institution_members: [{
+          identity_id: personIdentityId,
+          roles: repRoles as MemberRole[],
+          ownership: repOwnership || '100',
+          position: repPosition || 'Authorized Representative',
+        }],
+        tax_details: [{
+          tax_payer_id: bizCipId,
+          tax_payer_country: 'USA',
+        }],
+        customer_due_diligence: {
+          industry_sector: bizIndustrySector || bizSubType,
+          purpose_of_account: bizPurpose as any,
+          source_of_funds: bizSourceOfFunds as any,
+          source_of_wealth: bizSourceOfWealth as any,
+          has_underlying_trust_structure: false,
+          has_nominee_shareholders: false,
+        },
       },
-      institution_members: [{
-        identity_id: personIdentityId,
-        roles: repRoles as MemberRole[],
-        ownership: repOwnership || '100',
-        position: repPosition || 'Authorized Representative',
-      }],
-      tax_details: [{
-        tax_payer_id: bizCipId,
-        tax_payer_country: 'USA',
-      }],
-      customer_due_diligence: {
-        industry_sector: bizIndustrySector || bizSubType,
-        purpose_of_account: bizPurpose as any,
-        source_of_funds: bizSourceOfFunds as any,
-        source_of_wealth: bizSourceOfWealth as any,
-        has_underlying_trust_structure: false,
-        has_nominee_shareholders: false,
-      },
+      module,
     };
 
     await onSubmit(institutionData);

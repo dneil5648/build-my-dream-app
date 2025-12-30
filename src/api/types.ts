@@ -211,8 +211,11 @@ export interface InstitutionDetails {
   additional_screening_status?: 'APPROVED' | 'DENIED' | 'PENDING';
 }
 
-// Complete Create Identity Request (matches Paxos SDK)
-export interface CreateIdentityRequest {
+// Module names for filtering
+export type ModuleName = 'PAY_INS' | 'PAY_OUTS' | 'CRYPTO_WALLET' | 'WHITE_LABEL' | 'TREASURY';
+
+// Base Identity Request (matches Paxos SDK)
+export interface IdentityRequestPayload {
   // Person Identity
   person_details?: PersonDetails;
 
@@ -229,6 +232,12 @@ export interface CreateIdentityRequest {
   metadata?: Record<string, string>;
 }
 
+// Complete Create Identity Request with module wrapper
+export interface CreateIdentityRequest {
+  identity_request: IdentityRequestPayload;
+  module: ModuleName;
+}
+
 // Simplified response from backend
 export interface PaxosIdentity {
   id: string;
@@ -243,9 +252,16 @@ export interface PaxosIdentity {
 
 // ============= Account Types =============
 
-export interface CreateAccountRequest {
+// Base Account Request payload
+export interface AccountRequestPayload {
   identity_id: string;
   description?: string;
+}
+
+// Complete Create Account Request with module wrapper
+export interface CreateAccountRequest {
+  account_request: AccountRequestPayload;
+  module: ModuleName;
 }
 
 export interface PaxosAccount {

@@ -4,16 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CreateIdentityRequest, IdentityType, PaxosAddress } from '@/api/types';
+import { CreateIdentityRequest, IdentityType, PaxosAddress, ModuleName } from '@/api/types';
 
 interface CreateIdentityFormProps {
   onSubmit: (data: CreateIdentityRequest) => Promise<void>;
   isLoading?: boolean;
+  module?: ModuleName;
 }
 
 export const CreateIdentityForm: React.FC<CreateIdentityFormProps> = ({
   onSubmit,
   isLoading,
+  module = 'TREASURY',
 }) => {
   const [identityType, setIdentityType] = useState<IdentityType>('INDIVIDUAL');
 
@@ -51,45 +53,51 @@ export const CreateIdentityForm: React.FC<CreateIdentityFormProps> = ({
 
     if (identityType === 'INDIVIDUAL') {
       const request: CreateIdentityRequest = {
-        person_details: {
-          verifier_type: 'PAXOS',
-          first_name: firstName || undefined,
-          last_name: lastName,
-          email: email || undefined,
-          phone_number: phone || undefined,
-          date_of_birth: dateOfBirth || undefined,
-          cip_id: cipId || undefined,
-          cip_id_type: cipIdType,
-          cip_id_country: nationality,
-          nationality: nationality,
-          address: address,
+        identity_request: {
+          person_details: {
+            verifier_type: 'PAXOS',
+            first_name: firstName || undefined,
+            last_name: lastName,
+            email: email || undefined,
+            phone_number: phone || undefined,
+            date_of_birth: dateOfBirth || undefined,
+            cip_id: cipId || undefined,
+            cip_id_type: cipIdType,
+            cip_id_country: nationality,
+            nationality: nationality,
+            address: address,
+          },
+          customer_due_diligence: {
+            purpose_of_account: 'INVESTMENT_TRADING',
+          },
         },
-        customer_due_diligence: {
-          purpose_of_account: 'INVESTMENT_TRADING',
-        },
+        module,
       };
       await onSubmit(request);
     } else {
       const request: CreateIdentityRequest = {
-        institution_details: {
-          name: bizName,
-          email: bizEmail,
-          phone_number: bizPhone,
-          institution_type: bizType,
-          institution_sub_type: bizSubType,
-          cip_id: bizCipId,
-          cip_id_type: 'EIN',
-          cip_id_country: 'USA',
-          govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : new Date().toISOString(),
-          business_address: address,
-          regulation_status: 'NON_REGULATED',
-          trading_type: 'PRIVATE',
+        identity_request: {
+          institution_details: {
+            name: bizName,
+            email: bizEmail,
+            phone_number: bizPhone,
+            institution_type: bizType,
+            institution_sub_type: bizSubType,
+            cip_id: bizCipId,
+            cip_id_type: 'EIN',
+            cip_id_country: 'USA',
+            govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : new Date().toISOString(),
+            business_address: address,
+            regulation_status: 'NON_REGULATED',
+            trading_type: 'PRIVATE',
+          },
+          institution_members: [], // Note: Institution requires person identities as members
+          customer_due_diligence: {
+            industry_sector: bizSubType,
+            purpose_of_account: 'INVESTMENT_TRADING',
+          },
         },
-        institution_members: [], // Note: Institution requires person identities as members
-        customer_due_diligence: {
-          industry_sector: bizSubType,
-          purpose_of_account: 'INVESTMENT_TRADING',
-        },
+        module,
       };
       await onSubmit(request);
     }

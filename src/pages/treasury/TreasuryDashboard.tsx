@@ -252,6 +252,7 @@ const TreasuryDashboard: React.FC = () => {
             onSubmit={handleCreateIdentity}
             isLoading={createIdentity.isPending}
             onCancel={() => setShowOnboarding(false)}
+            module="TREASURY"
           />
         </DialogContent>
       </Dialog>
@@ -266,6 +267,7 @@ const TreasuryDashboard: React.FC = () => {
             identities={identities}
             onSubmit={handleCreateAccount}
             isLoading={createAccount.isPending}
+            module="TREASURY"
           />
         </DialogContent>
       </Dialog>

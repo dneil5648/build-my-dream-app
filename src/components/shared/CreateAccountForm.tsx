@@ -5,18 +5,20 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PaxosIdentity, CreateAccountRequest } from '@/api/types';
+import { PaxosIdentity, CreateAccountRequest, ModuleName } from '@/api/types';
 
 interface CreateAccountFormProps {
   identities: PaxosIdentity[];
   onSubmit: (data: CreateAccountRequest) => Promise<void>;
   isLoading?: boolean;
+  module?: ModuleName;
 }
 
 export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
   identities,
   onSubmit,
   isLoading,
+  module = 'TREASURY',
 }) => {
   const [identityId, setIdentityId] = useState('');
   const [description, setDescription] = useState('');
@@ -27,8 +29,11 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
     if (!identityId) return;
 
     await onSubmit({
-      identity_id: identityId,
-      description: description || undefined,
+      account_request: {
+        identity_id: identityId,
+        description: description || undefined,
+      },
+      module,
     });
   };
 

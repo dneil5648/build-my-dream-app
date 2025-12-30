@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CreateIdentityRequest, IdentityType, PaxosAddress } from '@/api/types';
+import { CreateIdentityRequest, IdentityType, PaxosAddress, ModuleName } from '@/api/types';
 import { 
   INDUSTRY_SECTORS, 
   CIP_ID_TYPES, 
@@ -20,6 +20,7 @@ interface OnboardingWizardProps {
   onSubmit: (data: CreateIdentityRequest) => Promise<void>;
   isLoading?: boolean;
   onCancel?: () => void;
+  module?: ModuleName;
 }
 
 type Step = 'type' | 'details' | 'address' | 'cdd' | 'review';
@@ -37,6 +38,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   onSubmit,
   isLoading,
   onCancel,
+  module = 'TREASURY',
 }) => {
   const [step, setStep] = useState<Step>('type');
   const [identityType, setIdentityType] = useState<IdentityType | null>(null);
@@ -117,59 +119,65 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     if (identityType === 'INDIVIDUAL') {
       // Person identity - only verifier_type, last_name, and address are required
       const data: CreateIdentityRequest = {
-        person_details: {
-          verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
-          passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
-          passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
-          passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
-          first_name: firstName || undefined,
-          last_name: lastName,
-          email: email || undefined,
-          phone_number: phone || undefined,
-          date_of_birth: dateOfBirth || undefined,
-          cip_id: shouldIncludeCipId() ? cipId : undefined,
-          cip_id_type: shouldIncludeCipId() ? cipIdType as any : undefined,
-          cip_id_country: shouldIncludeCipId() ? nationality : undefined,
-          nationality: nationality || undefined,
-          address: address,
+        identity_request: {
+          person_details: {
+            verifier_type: idvVendor ? 'PASSTHROUGH' : 'PAXOS',
+            passthrough_verifier_type: idvVendor ? idvVendor as any : undefined,
+            passthrough_verified_at: idvVendor ? new Date().toISOString() : undefined,
+            passthrough_verification_status: idvVendor ? 'APPROVED' : undefined,
+            first_name: firstName || undefined,
+            last_name: lastName,
+            email: email || undefined,
+            phone_number: phone || undefined,
+            date_of_birth: dateOfBirth || undefined,
+            cip_id: shouldIncludeCipId() ? cipId : undefined,
+            cip_id_type: shouldIncludeCipId() ? cipIdType as any : undefined,
+            cip_id_country: shouldIncludeCipId() ? nationality : undefined,
+            nationality: nationality || undefined,
+            address: address,
+          },
+          tax_details: shouldIncludeCipId() ? [{
+            tax_payer_id: cipId,
+            tax_payer_country: nationality,
+            tin_verification_status: 'APPROVED',
+          }] : undefined,
+          customer_due_diligence: {
+            purpose_of_account: purposeOfAccount as any,
+            employment_status: employmentStatus as any,
+            source_of_wealth: sourceOfWealth as any,
+            source_of_funds: sourceOfFunds as any,
+          },
         },
-        tax_details: shouldIncludeCipId() ? [{
-          tax_payer_id: cipId,
-          tax_payer_country: nationality,
-          tin_verification_status: 'APPROVED',
-        }] : undefined,
-        customer_due_diligence: {
-          purpose_of_account: purposeOfAccount as any,
-          employment_status: employmentStatus as any,
-          source_of_wealth: sourceOfWealth as any,
-          source_of_funds: sourceOfFunds as any,
-        },
+        module,
       };
       await onSubmit(data);
     } else {
       // Institution identity - many required fields
       const data: CreateIdentityRequest = {
-        institution_details: {
-          name: bizName,
-          email: bizEmail,
-          phone_number: bizPhone,
-          institution_type: bizType as any,
-          institution_sub_type: bizSubType,
-          cip_id: bizCipId,
-          cip_id_type: 'EIN',
-          cip_id_country: 'USA',
-          govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : new Date().toISOString(),
-          business_address: address,
-          incorporation_address: address, // Required by API
-          regulation_status: 'NON_REGULATED',
-          trading_type: 'PRIVATE',
+        identity_request: {
+          institution_details: {
+            name: bizName,
+            email: bizEmail,
+            phone_number: bizPhone,
+            institution_type: bizType as any,
+            institution_sub_type: bizSubType,
+            cip_id: bizCipId,
+            cip_id_type: 'EIN',
+            cip_id_country: 'USA',
+            govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : new Date().toISOString(),
+            business_address: address,
+            incorporation_address: address, // Required by API
+            regulation_status: 'NON_REGULATED',
+            trading_type: 'PRIVATE',
+          },
+          institution_members: [],
+          customer_due_diligence: {
+            industry_sector: bizSubType,
+            purpose_of_account: purposeOfAccount as any,
+            source_of_funds: sourceOfFunds as any,
+          },
         },
-        institution_members: [],
-        customer_due_diligence: {
-          industry_sector: bizSubType,
-          purpose_of_account: purposeOfAccount as any,
-          source_of_funds: sourceOfFunds as any,
-        },
+        module,
       };
       await onSubmit(data);
     }
