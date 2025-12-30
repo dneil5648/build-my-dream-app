@@ -86,9 +86,9 @@ const PayInsDashboard: React.FC = () => {
   const selectedAccountBalances = Array.isArray(selectedAccountBalancesResponse?.data?.items) 
     ? selectedAccountBalancesResponse.data.items : [];
   const allSelectedAccountAddresses = selectedAccountAddressesResponse?.data || [];
-  // Filter addresses to only show those belonging to the selected account
+  // Filter addresses to only show those belonging to the selected account (using paxos_account_id)
   const selectedAccountAddresses = selectedAccount 
-    ? allSelectedAccountAddresses.filter(addr => addr.account_id === selectedAccount.id)
+    ? allSelectedAccountAddresses.filter(addr => addr.paxos_account_id === selectedAccount.paxos_account_id)
     : [];
 
   // Get module config and check for institution identity
