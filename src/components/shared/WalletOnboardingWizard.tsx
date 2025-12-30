@@ -205,32 +205,34 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Progress Steps */}
-      <div className="flex items-center justify-between mb-8 overflow-x-auto pb-2">
-        {steps.map((s, index) => (
-          <React.Fragment key={s}>
-            <div className="flex items-center flex-shrink-0">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                index <= currentStepIndex 
-                  ? `bg-${accentColor} text-${accentColor}-foreground` 
-                  : 'bg-secondary text-muted-foreground'
-              }`} style={index <= currentStepIndex ? { backgroundColor: `hsl(var(--${accentColor}))` } : {}}>
-                {index < currentStepIndex ? <Check className="h-4 w-4" /> : index + 1}
+      {/* Progress Steps - only show after type selection */}
+      {step !== 'wallet-type' && (
+        <div className="flex items-center justify-between mb-8">
+          {steps.slice(1).map((s, index) => (
+            <React.Fragment key={s}>
+              <div className="flex items-center flex-shrink-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                  index + 1 <= currentStepIndex 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-secondary text-muted-foreground'
+                }`}>
+                  {index + 1 < currentStepIndex ? <Check className="h-4 w-4" /> : index + 1}
+                </div>
+                <span className={`ml-2 text-xs hidden md:inline whitespace-nowrap ${
+                  index + 1 <= currentStepIndex ? 'text-foreground' : 'text-muted-foreground'
+                }`}>
+                  {getStepLabel(s)}
+                </span>
               </div>
-              <span className={`ml-2 text-xs hidden md:inline whitespace-nowrap ${
-                index <= currentStepIndex ? 'text-foreground' : 'text-muted-foreground'
-              }`}>
-                {getStepLabel(s)}
-              </span>
-            </div>
-            {index < steps.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-2 min-w-[20px] ${
-                index < currentStepIndex ? `bg-${accentColor}` : 'bg-secondary'
-              }`} style={index < currentStepIndex ? { backgroundColor: `hsl(var(--${accentColor}))` } : {}} />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
+              {index < steps.slice(1).length - 1 && (
+                <div className={`flex-1 h-0.5 mx-2 min-w-[20px] transition-colors ${
+                  index + 1 < currentStepIndex ? 'bg-primary' : 'bg-secondary'
+                }`} />
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      )}
 
       {/* Step Content */}
       {step === 'wallet-type' && (
