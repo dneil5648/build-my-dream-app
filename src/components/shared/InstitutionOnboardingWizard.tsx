@@ -6,6 +6,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { CreateIdentityRequest, PaxosAddress } from '@/api/types';
+import { 
+  INDUSTRY_SECTORS, 
+  CIP_ID_TYPES, 
+  INSTITUTION_TYPES, 
+  REGULATION_STATUSES, 
+  TRADING_TYPES,
+  ACCOUNT_PURPOSES 
+} from '@/lib/constants';
 
 interface InstitutionOnboardingWizardProps {
   onSubmit: (data: CreateIdentityRequest) => Promise<void>;
@@ -31,32 +39,32 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
 }) => {
   const [step, setStep] = useState<Step>('rep-info');
 
-  // Representative Fields
+  // Representative Fields - only last_name and address required per API
   const [repFirstName, setRepFirstName] = useState('');
   const [repLastName, setRepLastName] = useState('');
   const [repEmail, setRepEmail] = useState('');
   const [repPhone, setRepPhone] = useState('');
   const [repDateOfBirth, setRepDateOfBirth] = useState('');
   const [repCipId, setRepCipId] = useState('');
-  const [repCipIdType, setRepCipIdType] = useState<'SSN' | 'ITIN' | 'PASSPORT' | 'ID_CARD' | 'DRIVING_LICENSE'>('SSN');
+  const [repCipIdType, setRepCipIdType] = useState<string>('SSN');
   const [repNationality, setRepNationality] = useState('USA');
   const [repAddress, setRepAddress] = useState<PaxosAddress>(emptyAddress);
 
-  // Business Fields
+  // Business Fields - all required per API
   const [bizName, setBizName] = useState('');
   const [bizDBA, setBizDBA] = useState('');
   const [bizDescription, setBizDescription] = useState('');
   const [bizEmail, setBizEmail] = useState('');
   const [bizPhone, setBizPhone] = useState('');
-  const [bizType, setBizType] = useState<'CORPORATION' | 'LLC' | 'PARTNERSHIP' | 'TRUST'>('CORPORATION');
+  const [bizType, setBizType] = useState<string>('CORPORATION');
   const [bizSubType, setBizSubType] = useState('');
   const [bizCipId, setBizCipId] = useState('');
   const [bizGovtRegDate, setBizGovtRegDate] = useState('');
   const [bizAddress, setBizAddress] = useState<PaxosAddress>(emptyAddress);
 
   // Regulatory & Financial
-  const [bizRegulationStatus, setBizRegulationStatus] = useState<'US_REGULATED' | 'INTL_REGULATED' | 'NON_REGULATED'>('NON_REGULATED');
-  const [bizTradingType, setBizTradingType] = useState<'PRIVATE' | 'PUBLIC' | 'PUBLICLY_TRADED_SUBSIDIARY'>('PRIVATE');
+  const [bizRegulationStatus, setBizRegulationStatus] = useState<string>('NON_REGULATED');
+  const [bizTradingType, setBizTradingType] = useState<string>('PRIVATE');
   const [bizIndustrySector, setBizIndustrySector] = useState('');
   const [bizPurpose, setBizPurpose] = useState('INVESTMENT_TRADING');
 
@@ -100,9 +108,9 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         phone_number: repPhone || undefined,
         date_of_birth: repDateOfBirth || undefined,
         cip_id: repCipId || undefined,
-        cip_id_type: repCipIdType,
-        cip_id_country: repNationality,
-        nationality: repNationality,
+        cip_id_type: repCipId ? repCipIdType as any : undefined,
+        cip_id_country: repCipId ? repNationality : undefined,
+        nationality: repNationality || undefined,
         address: repAddress,
       },
       customer_due_diligence: {
@@ -120,15 +128,15 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         business_description: bizDescription || undefined,
         email: bizEmail,
         phone_number: bizPhone,
-        institution_type: bizType,
+        institution_type: bizType as any,
         institution_sub_type: bizSubType,
         cip_id: bizCipId,
         cip_id_type: 'EIN',
         cip_id_country: 'USA',
         govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : '',
         business_address: bizAddress,
-        regulation_status: bizRegulationStatus,
-        trading_type: bizTradingType,
+        regulation_status: bizRegulationStatus as any,
+        trading_type: bizTradingType as any,
       },
       institution_members: [],
       customer_due_diligence: {
@@ -143,15 +151,18 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
   const canProceed = (): boolean => {
     switch (step) {
       case 'rep-info':
-        return !!(repLastName && repEmail && repPhone && repDateOfBirth && repCipId && repNationality);
+        // Only last_name required per API spec
+        return !!repLastName;
       case 'rep-address':
-        return !!(repAddress.address1 && repAddress.city && repAddress.province && repAddress.zip_code);
+        return !!(repAddress.address1 && repAddress.city && repAddress.province && repAddress.zip_code && repAddress.country);
       case 'biz-info':
+        // All institution fields required per API
         return !!(bizName && bizEmail && bizPhone && bizType && bizSubType && bizCipId && bizGovtRegDate);
       case 'biz-address':
-        return !!(bizAddress.address1 && bizAddress.city && bizAddress.province && bizAddress.zip_code);
+        return !!(bizAddress.address1 && bizAddress.city && bizAddress.province && bizAddress.zip_code && bizAddress.country);
       case 'biz-details':
-        return !!bizIndustrySector;
+        // Industry sector required for institutions
+        return !!(bizIndustrySector || bizSubType);
       case 'review':
         return true;
       default:
@@ -224,7 +235,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Email *</Label>
+                <Label>Email</Label>
                 <Input
                   type="email"
                   value={repEmail}
@@ -233,7 +244,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                 />
               </div>
               <div className="space-y-2">
-                <Label>Phone *</Label>
+                <Label>Phone</Label>
                 <Input
                   type="tel"
                   value={repPhone}
@@ -245,7 +256,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
             </div>
 
             <div className="space-y-2">
-              <Label>Date of Birth *</Label>
+              <Label>Date of Birth</Label>
               <Input
                 type="date"
                 value={repDateOfBirth}
@@ -257,12 +268,12 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
             <div className="pt-4 border-t border-border">
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="h-4 w-4 text-primary" />
-                <span className="font-medium text-foreground">Identity Verification</span>
+                <span className="font-medium text-foreground">Identity Verification (Optional)</span>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>Tax ID / SSN *</Label>
+                  <Label>ID Number</Label>
                   <Input
                     value={repCipId}
                     onChange={(e) => setRepCipId(e.target.value)}
@@ -271,25 +282,25 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>ID Type *</Label>
-                  <Select value={repCipIdType} onValueChange={(v: any) => setRepCipIdType(v)}>
+                  <Label>ID Type</Label>
+                  <Select value={repCipIdType} onValueChange={setRepCipIdType}>
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SSN">SSN</SelectItem>
-                      <SelectItem value="ITIN">ITIN</SelectItem>
-                      <SelectItem value="PASSPORT">Passport</SelectItem>
-                      <SelectItem value="ID_CARD">ID Card</SelectItem>
-                      <SelectItem value="DRIVING_LICENSE">Driver's License</SelectItem>
+                      {CIP_ID_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Nationality *</Label>
+                  <Label>Nationality</Label>
                   <Input
                     value={repNationality}
-                    onChange={(e) => setRepNationality(e.target.value)}
+                    onChange={(e) => setRepNationality(e.target.value.toUpperCase())}
                     placeholder="USA"
                     maxLength={3}
                     className="bg-secondary border-border"
@@ -365,7 +376,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
               <Label>Country *</Label>
               <Input
                 value={repAddress.country}
-                onChange={(e) => setRepAddress({ ...repAddress, country: e.target.value })}
+                onChange={(e) => setRepAddress({ ...repAddress, country: e.target.value.toUpperCase() })}
                 placeholder="USA"
                 maxLength={3}
                 className="bg-secondary border-border"
@@ -434,26 +445,33 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Business Type *</Label>
-                <Select value={bizType} onValueChange={(v: any) => setBizType(v)}>
+                <Select value={bizType} onValueChange={setBizType}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CORPORATION">Corporation</SelectItem>
-                    <SelectItem value="LLC">LLC</SelectItem>
-                    <SelectItem value="PARTNERSHIP">Partnership</SelectItem>
-                    <SelectItem value="TRUST">Trust</SelectItem>
+                    {INSTITUTION_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Industry *</Label>
-                <Input
-                  value={bizSubType}
-                  onChange={(e) => setBizSubType(e.target.value)}
-                  placeholder="e.g., Technology, Finance"
-                  className="bg-secondary border-border"
-                />
+                <Select value={bizSubType} onValueChange={setBizSubType}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDUSTRY_SECTORS.map((sector) => (
+                      <SelectItem key={sector.value} value={sector.value}>
+                        {sector.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -552,7 +570,7 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
               <Label>Country *</Label>
               <Input
                 value={bizAddress.country}
-                onChange={(e) => setBizAddress({ ...bizAddress, country: e.target.value })}
+                onChange={(e) => setBizAddress({ ...bizAddress, country: e.target.value.toUpperCase() })}
                 placeholder="USA"
                 maxLength={3}
                 className="bg-secondary border-border"
@@ -586,38 +604,48 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
 
             <div className="space-y-2">
               <Label>Industry Sector *</Label>
-              <Input
-                value={bizIndustrySector}
-                onChange={(e) => setBizIndustrySector(e.target.value)}
-                placeholder="e.g., Technology, Financial Services"
-                className="bg-secondary border-border"
-              />
+              <Select value={bizIndustrySector || bizSubType} onValueChange={setBizIndustrySector}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select industry sector" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INDUSTRY_SECTORS.map((sector) => (
+                    <SelectItem key={sector.value} value={sector.value}>
+                      {sector.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Regulation Status</Label>
-                <Select value={bizRegulationStatus} onValueChange={(v: any) => setBizRegulationStatus(v)}>
+                <Select value={bizRegulationStatus} onValueChange={setBizRegulationStatus}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NON_REGULATED">Non-Regulated</SelectItem>
-                    <SelectItem value="US_REGULATED">US Regulated</SelectItem>
-                    <SelectItem value="INTL_REGULATED">Internationally Regulated</SelectItem>
+                    {REGULATION_STATUSES.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Trading Type</Label>
-                <Select value={bizTradingType} onValueChange={(v: any) => setBizTradingType(v)}>
+                <Select value={bizTradingType} onValueChange={setBizTradingType}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PRIVATE">Private</SelectItem>
-                    <SelectItem value="PUBLIC">Public</SelectItem>
-                    <SelectItem value="PUBLICLY_TRADED_SUBSIDIARY">Publicly Traded Subsidiary</SelectItem>
+                    {TRADING_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -630,9 +658,11 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="INVESTMENT_TRADING">Investment & Trading</SelectItem>
-                  <SelectItem value="SAVINGS">Savings</SelectItem>
-                  <SelectItem value="STABLECOIN_PURCHASE_REDEMPTION">Stablecoin Purchase/Redemption</SelectItem>
+                  {ACCOUNT_PURPOSES.map((purpose) => (
+                    <SelectItem key={purpose.value} value={purpose.value}>
+                      {purpose.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -661,12 +691,24 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <span className="text-muted-foreground">Name:</span>
                   <span className="text-foreground">{repFirstName} {repLastName}</span>
-                  <span className="text-muted-foreground">Email:</span>
-                  <span className="text-foreground">{repEmail}</span>
-                  <span className="text-muted-foreground">Phone:</span>
-                  <span className="text-foreground">{repPhone}</span>
-                  <span className="text-muted-foreground">ID Type:</span>
-                  <span className="text-foreground">{repCipIdType}</span>
+                  {repEmail && (
+                    <>
+                      <span className="text-muted-foreground">Email:</span>
+                      <span className="text-foreground">{repEmail}</span>
+                    </>
+                  )}
+                  {repPhone && (
+                    <>
+                      <span className="text-muted-foreground">Phone:</span>
+                      <span className="text-foreground">{repPhone}</span>
+                    </>
+                  )}
+                  {repCipId && (
+                    <>
+                      <span className="text-muted-foreground">ID Type:</span>
+                      <span className="text-foreground">{CIP_ID_TYPES.find(t => t.value === repCipIdType)?.label}</span>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -679,9 +721,9 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                   <span className="text-muted-foreground">Legal Name:</span>
                   <span className="text-foreground">{bizName}</span>
                   <span className="text-muted-foreground">Type:</span>
-                  <span className="text-foreground">{bizType}</span>
+                  <span className="text-foreground">{INSTITUTION_TYPES.find(t => t.value === bizType)?.label}</span>
                   <span className="text-muted-foreground">Industry:</span>
-                  <span className="text-foreground">{bizSubType}</span>
+                  <span className="text-foreground">{INDUSTRY_SECTORS.find(s => s.value === bizSubType)?.label}</span>
                   <span className="text-muted-foreground">Email:</span>
                   <span className="text-foreground">{bizEmail}</span>
                   <span className="text-muted-foreground col-span-2 pt-2">Address:</span>
