@@ -406,6 +406,7 @@ export interface ListQueryParams {
   sort?: string;
   status?: string;
   network?: string;
+  account_id?: string;
 }
 
 export interface IdentityQueryParams extends ListQueryParams {
