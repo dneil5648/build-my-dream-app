@@ -397,10 +397,58 @@ export interface FiatDepositInstructions {
   updated_at: string;
 }
 
+export interface SandboxDepositAddress {
+  country: string;
+  address1: string;
+  address2?: string;
+  city: string;
+  province: string;
+  zip_code: string;
+}
+
+export interface SandboxDepositRoutingDetails {
+  routing_number_type: 'ABA' | 'SWIFT' | 'IBAN';
+  routing_number: string;
+  bank_name: string;
+  bank_address: SandboxDepositAddress;
+}
+
 export interface CreateSandboxDepositRequest {
-  account_id: string;
+  deposit_instruction_id: string;
   amount: string;
   asset: string;
+  account_number: string;
+  account_owner_address: SandboxDepositAddress;
+  routing_details: SandboxDepositRoutingDetails;
+}
+
+export interface FiatDepositInstructionDetails {
+  id: string;
+  memo_id: string;
+  status: string;
+  fiat_network_details: {
+    wire?: {
+      account_number: string;
+      routing_number: string;
+      bank_name: string;
+      bank_address?: {
+        address1: string;
+        city: string;
+        state: string;
+        postal_code: string;
+        country: string;
+      };
+      beneficiary_name: string;
+      reference?: string;
+    };
+    ach?: {
+      account_number: string;
+      routing_number: string;
+      bank_name: string;
+    };
+  };
+  created_at: string;
+  updated_at: string;
 }
 
 // ============= Crypto Types =============
@@ -515,6 +563,7 @@ export interface WithdrawAssetRequest {
   destination_address?: string;
   fiat_account_id?: string;
   destination_account_id?: string;
+  crypto_destination_id?: string;
 }
 
 // ============= Transaction Types =============
