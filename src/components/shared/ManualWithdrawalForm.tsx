@@ -37,6 +37,8 @@ const CRYPTO_NETWORKS: Record<string, string[]> = {
   'BITCOIN': ['BTC'],
 };
 
+const ALL_NETWORKS = ['ETHEREUM', 'SOLANA', 'STELLAR', 'BASE', 'POLYGON', 'BITCOIN'];
+
 export const ManualWithdrawalForm: React.FC<ManualWithdrawalFormProps> = ({
   accounts,
   destinationAddresses,
@@ -68,13 +70,10 @@ export const ManualWithdrawalForm: React.FC<ManualWithdrawalFormProps> = ({
     return destinationAddresses.filter(addr => addr.crypto_network === network);
   }, [destinationAddresses, network]);
 
-  // Get networks available for the selected destination asset
+  // Get all networks - don't filter by asset to show all options
   const availableNetworks = useMemo(() => {
-    if (!destinationAsset) return Object.keys(CRYPTO_NETWORKS);
-    return Object.entries(CRYPTO_NETWORKS)
-      .filter(([_, assets]) => assets.includes(destinationAsset))
-      .map(([network]) => network);
-  }, [destinationAsset]);
+    return ALL_NETWORKS;
+  }, []);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
