@@ -585,9 +585,11 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
                   {existingInstructions.map((inst: FiatDepositInstructions) => (
                     <SelectItem key={inst.id} value={inst.id}>
                       <div className="flex flex-col items-start">
-                        <span className="font-medium">{inst.network} - {inst.instruction_type}</span>
+                        <span className="font-medium">
+                          {inst.network} - {inst.source_asset || 'USD'} → {inst.destination_asset || 'USD'}
+                        </span>
                         <span className="text-xs text-muted-foreground">
-                          {inst.id?.slice(0, 16)}...
+                          {inst.deposit_instructions_id?.slice(0, 16)}...
                         </span>
                       </div>
                     </SelectItem>
@@ -599,18 +601,52 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
 
           {/* Selected Instruction Details */}
           {selectedInstruction && (
-            <div className="p-4 rounded-lg bg-muted/50 space-y-2 text-sm">
+            <div className="p-4 rounded-lg bg-muted/50 space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Network</span>
                 <span className="font-medium text-foreground">{selectedInstruction.network}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Type</span>
-                <span className="font-medium text-foreground">{selectedInstruction.instruction_type}</span>
+                <span className="text-muted-foreground">Flow</span>
+                <span className="font-medium text-foreground">
+                  {selectedInstruction.source_asset || 'USD'} → {selectedInstruction.destination_asset || 'USD'}
+                </span>
               </div>
+              {selectedInstruction.routing_number_type && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Routing Type</span>
+                  <span className="font-medium text-foreground">{selectedInstruction.routing_number_type}</span>
+                </div>
+              )}
+              {selectedInstruction.destination_type && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Destination Type</span>
+                  <span className="font-medium text-foreground capitalize">{selectedInstruction.destination_type}</span>
+                </div>
+              )}
+              {selectedInstruction.destination_nickname && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Destination Wallet</span>
+                  <span className="font-medium text-foreground">{selectedInstruction.destination_nickname}</span>
+                </div>
+              )}
+              {selectedInstruction.destination_address && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Address</span>
+                  <span className="font-medium text-foreground font-mono text-xs">
+                    {selectedInstruction.destination_address.slice(0, 10)}...{selectedInstruction.destination_address.slice(-8)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
                 <span className="font-medium text-success">{selectedInstruction.status}</span>
+              </div>
+              <div className="flex justify-between border-t border-border pt-2 mt-2">
+                <span className="text-muted-foreground">Instruction ID</span>
+                <span className="font-mono text-xs text-foreground">
+                  {selectedInstruction.deposit_instructions_id?.slice(0, 16)}...
+                </span>
               </div>
             </div>
           )}
