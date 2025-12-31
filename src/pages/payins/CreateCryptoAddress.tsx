@@ -361,14 +361,16 @@ const CreateCryptoAddress: React.FC = () => {
                     {destinationAddresses.length === 0 && !loadingDestinations ? (
                       <div className="px-2 py-4 text-center text-muted-foreground text-sm">No destination addresses registered</div>
                     ) : (
-                      destinationAddresses.map((addr) => (
-                        <SelectItem key={addr.id} value={addr.destination_address_id || addr.id}>
-                          <div className="flex items-center gap-2">
-                            <Wallet className="h-4 w-4 text-muted-foreground" />
-                            {addr.nickname || `${addr.crypto_network} - ${addr.address.slice(0, 12)}...`}
-                          </div>
-                        </SelectItem>
-                      ))
+                      destinationAddresses
+                        .filter((addr) => addr.paxos_crypto_destination_id)
+                        .map((addr) => (
+                          <SelectItem key={addr.id} value={addr.paxos_crypto_destination_id!}>
+                            <div className="flex items-center gap-2">
+                              <Wallet className="h-4 w-4 text-muted-foreground" />
+                              {addr.nickname || addr.label || `${addr.crypto_network} - ${addr.address.slice(0, 12)}...`}
+                            </div>
+                          </SelectItem>
+                        ))
                     )}
                   </SelectContent>
                 </Select>
