@@ -29,6 +29,9 @@ import TreasuryWithdraw from "./pages/treasury/TreasuryWithdraw";
 import PayoutsDashboard from "./pages/payouts/PayoutsDashboard";
 import CreatePayout from "./pages/payouts/CreatePayout";
 import WhiteLabelWallet from "./pages/whitelabel/WhiteLabelWallet";
+import WhiteLabelReceive from "./pages/whitelabel/WhiteLabelReceive";
+import WhiteLabelSend from "./pages/whitelabel/WhiteLabelSend";
+import WhiteLabelActivity from "./pages/whitelabel/WhiteLabelActivity";
 
 const queryClient = new QueryClient();
 
