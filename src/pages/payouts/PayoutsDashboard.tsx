@@ -72,8 +72,8 @@ const PayoutsDashboard: React.FC = () => {
   // IMPORTANT: Only use identities created within this module (PAY_OUTS)
   const moduleConfig = getModuleIdentityConfig();
   
-  // If requireOnboarding is true, always show onboarding regardless of existing identities
-  const forceNewOnboarding = moduleConfig.requireOnboarding;
+  // Check if this specific module requires new registration
+  const forceNewOnboarding = moduleConfig.payoutsRequireNew;
   
   // Find the configured identity for this module (must be from PAY_OUTS module identities)
   const configuredIdentity = moduleConfig.payoutsIdentityId 
