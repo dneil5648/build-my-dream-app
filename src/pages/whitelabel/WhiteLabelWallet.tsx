@@ -130,7 +130,7 @@ const WhiteLabelWallet: React.FC = () => {
             onSelectAccount={setSelectedAccountId}
             onCreateAccount={() => setShowOnboarding(true)}
             isLoading={loadingAccounts}
-            label="Select Wallet"
+            label="Wallet"
           />
           <Button 
             onClick={() => setShowOnboarding(true)} 
