@@ -250,12 +250,30 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              {instruction.routing_number_type && (
+                <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                  <p className="text-xs text-muted-foreground">Routing Number Type</p>
+                  <p className="font-medium text-foreground">{instruction.routing_number_type}</p>
+                </div>
+              )}
               <div className="p-4 rounded-lg bg-muted/50 space-y-1">
                 <p className="text-xs text-muted-foreground">Status</p>
                 <Badge variant={instruction.status === 'active' ? 'default' : 'secondary'} className={instruction.status === 'active' ? 'bg-success/20 text-success border-success/30' : ''}>
                   {instruction.status}
                 </Badge>
               </div>
+              {!instruction.routing_number_type && (
+                <div className="p-4 rounded-lg bg-muted/50 space-y-1">
+                  <p className="text-xs text-muted-foreground">Created</p>
+                  <p className="font-medium text-foreground flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    {instruction.created_at ? new Date(instruction.created_at).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {instruction.routing_number_type && (
               <div className="p-4 rounded-lg bg-muted/50 space-y-1">
                 <p className="text-xs text-muted-foreground">Created</p>
                 <p className="font-medium text-foreground flex items-center gap-2">
@@ -263,7 +281,7 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
                   {instruction.created_at ? new Date(instruction.created_at).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
-            </div>
+            )}
           </div>
 
           {/* IDs Section */}

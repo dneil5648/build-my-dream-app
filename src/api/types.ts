@@ -391,6 +391,7 @@ export interface FiatDepositInstructions {
   network: string;
   account_type: string;
   instruction_type: string;
+  routing_number_type?: string;
   source_asset?: string;
   destination_asset?: string;
   orchestration_rule_id?: string;
