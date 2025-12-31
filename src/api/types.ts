@@ -436,7 +436,7 @@ export interface CryptoAddress {
 export interface CryptoWithdrawalFeeRequest {
   asset: string;
   amount: string;
-  network: string;
+  crypto_network: string;
   destination_address: string;
 }
 
