@@ -365,7 +365,7 @@ const CreateCryptoAddress: React.FC = () => {
                         <SelectItem key={addr.id} value={addr.destination_address_id || addr.id}>
                           <div className="flex items-center gap-2">
                             <Wallet className="h-4 w-4 text-muted-foreground" />
-                            {addr.label || `${addr.crypto_network} - ${addr.address.slice(0, 12)}...`}
+                            {addr.nickname || `${addr.crypto_network} - ${addr.address.slice(0, 12)}...`}
                           </div>
                         </SelectItem>
                       ))
