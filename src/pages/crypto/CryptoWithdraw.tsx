@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
 import { useCalculateWithdrawalFee } from '@/hooks/useCrypto';
 import { useWithdrawAssets } from '@/hooks/useAssets';
-import { CryptoNetwork, AccountBalanceItem } from '@/api/types';
+import { AccountBalanceItem } from '@/api/types';
 
 // Stablecoins only - per spec
 const SUPPORTED_STABLECOINS = ['USDC', 'USDT', 'USDP', 'PYUSD', 'USDG', 'DAI', 'BUSD'];
@@ -129,7 +129,7 @@ const CryptoWithdraw: React.FC = () => {
     try {
       const result = await calculateFee.mutateAsync({
         asset: formData.asset,
-        network: formData.network as CryptoNetwork,
+        network: formData.network,
         amount: formData.amount,
         destination_address: formData.destination,
       });
@@ -164,7 +164,7 @@ const CryptoWithdraw: React.FC = () => {
         destination_asset: formData.asset, // Same asset - no conversion
         destination_address: formData.destination,
         amount: formData.amount,
-        network: formData.network as CryptoNetwork,
+        network: formData.network,
       });
       toast.success('Withdrawal initiated successfully');
       setShowConfirmation(false);
