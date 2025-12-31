@@ -98,12 +98,19 @@ const SendCrypto: React.FC = () => {
         toast.success(`Converted $${formData.amount} USD to ${formData.sourceAsset}`);
       }
 
-      // Withdraw to destination
+      // Withdraw to destination - use destination_address and network like ManualWithdrawalForm
+      const destAddr = destinations.find((d: CryptoDestinationAddress) => d.id === formData.destinationId);
+      if (!destAddr) {
+        toast.error('Destination address not found');
+        return;
+      }
+
       await withdrawAssets.mutateAsync({
         account_id: formData.sourceAccount,
         source_asset: formData.sourceAsset,
         destination_asset: formData.sourceAsset,
-        crypto_destination_id: formData.destinationId,
+        destination_address: destAddr.address,
+        network: destAddr.crypto_network as any,
         amount: formData.amount,
       });
       
