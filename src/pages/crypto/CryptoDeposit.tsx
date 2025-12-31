@@ -1,31 +1,73 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Copy, QrCode } from 'lucide-react';
+import { ArrowLeft, Copy, QrCode, AlertTriangle, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { toast } from 'sonner';
-import { useCreateCryptoAddress, useCryptoAddresses } from '@/hooks/useCrypto';
+import { useCreateCryptoAddress } from '@/hooks/useCrypto';
 import { useAccounts } from '@/hooks/useAccounts';
 import { CryptoNetwork } from '@/api/types';
+
+// Stablecoins only - per spec
+const SUPPORTED_STABLECOINS = [
+  { value: 'USDC', label: 'USD Coin', symbol: 'USDC' },
+  { value: 'USDT', label: 'Tether', symbol: 'USDT' },
+  { value: 'USDP', label: 'Pax Dollar', symbol: 'USDP' },
+  { value: 'PYUSD', label: 'PayPal USD', symbol: 'PYUSD' },
+  { value: 'USDG', label: 'Global Dollar', symbol: 'USDG' },
+  { value: 'DAI', label: 'Dai', symbol: 'DAI' },
+];
+
+// Network options per asset
+const NETWORK_OPTIONS: Record<string, { value: string; label: string; chain: string }[]> = {
+  USDC: [
+    { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
+    { value: 'SOLANA', label: 'Solana', chain: 'SPL' },
+    { value: 'POLYGON', label: 'Polygon', chain: 'Polygon' },
+    { value: 'BASE', label: 'Base', chain: 'Base' },
+    { value: 'STELLAR', label: 'Stellar', chain: 'Stellar' },
+  ],
+  USDT: [
+    { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
+    { value: 'SOLANA', label: 'Solana', chain: 'SPL' },
+    { value: 'POLYGON', label: 'Polygon', chain: 'Polygon' },
+  ],
+  USDP: [
+    { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
+  ],
+  PYUSD: [
+    { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
+    { value: 'SOLANA', label: 'Solana', chain: 'SPL' },
+  ],
+  USDG: [
+    { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
+  ],
+  DAI: [
+    { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
+    { value: 'POLYGON', label: 'Polygon', chain: 'Polygon' },
+  ],
+};
 
 const CryptoDeposit: React.FC = () => {
   const [formData, setFormData] = useState({
     account: '',
-    sourceAsset: '',
-    destAsset: '',
+    asset: '',
     network: '',
   });
   const [generatedAddress, setGeneratedAddress] = useState<{ address: string; id: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const createCryptoAddress = useCreateCryptoAddress();
-  const { data: existingAddresses } = useCryptoAddresses();
-  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'CRYPTO_WALLET' });
   const accounts = accountsResponse?.data || [];
 
+  const availableNetworks = formData.asset ? NETWORK_OPTIONS[formData.asset] || [] : [];
+  const selectedNetwork = availableNetworks.find(n => n.value === formData.network);
+
   const handleGenerate = async () => {
-    if (!formData.account || !formData.sourceAsset || !formData.network) {
+    if (!formData.account || !formData.asset || !formData.network) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -34,8 +76,8 @@ const CryptoDeposit: React.FC = () => {
       const result = await createCryptoAddress.mutateAsync({
         account_id: formData.account,
         network: formData.network as CryptoNetwork,
-        source_asset: formData.sourceAsset,
-        destination_asset: formData.destAsset || formData.sourceAsset, // Default to same as source (no conversion)
+        source_asset: formData.asset,
+        destination_asset: formData.asset, // Same asset - no conversion for stablecoin wallet
       });
 
       if (result.success && result.data) {
@@ -53,9 +95,13 @@ const CryptoDeposit: React.FC = () => {
   const copyAddress = () => {
     if (generatedAddress) {
       navigator.clipboard.writeText(generatedAddress.address);
+      setCopied(true);
       toast.success('Address copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const selectedWallet = accounts.find(a => a.paxos_account_id === formData.account);
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -67,99 +113,132 @@ const CryptoDeposit: React.FC = () => {
           </Button>
         </Link>
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Crypto Deposit</h2>
-          <p className="text-muted-foreground">Generate a deposit address for crypto on-ramp</p>
+          <h2 className="text-2xl font-bold text-foreground">Receive Stablecoins</h2>
+          <p className="text-muted-foreground">Generate a deposit address for your wallet</p>
         </div>
       </div>
 
       <div className="glass rounded-xl p-8 space-y-6">
+        {/* Wallet Selection */}
         <div className="space-y-2">
-          <Label>Account</Label>
+          <Label>Wallet</Label>
           <Select
             value={formData.account}
             onValueChange={(v) => setFormData({...formData, account: v})}
             disabled={loadingAccounts}
           >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
+              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select wallet'} />
             </SelectTrigger>
             <SelectContent>
               {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.paxos_account_id}>
-                  Account {account.paxos_account_id.slice(0, 8)}...
+                  <div className="flex items-center gap-2">
+                    <span>{account.nickname || `Wallet ${account.paxos_account_id.slice(0, 8)}...`}</span>
+                  </div>
                 </SelectItem>
               ))}
               {accounts.length === 0 && !loadingAccounts && (
-                <SelectItem value="" disabled>No accounts found</SelectItem>
+                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  No wallets found. Create one first.
+                </div>
               )}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label>Source Asset</Label>
-            <Select value={formData.sourceAsset} onValueChange={(v) => setFormData({...formData, sourceAsset: v, destAsset: v})}>
-              <SelectTrigger className="bg-secondary border-border">
-                <SelectValue placeholder="Select asset" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="BTC">
+        {/* Asset Selection */}
+        <div className="space-y-2">
+          <Label>Stablecoin</Label>
+          <Select 
+            value={formData.asset} 
+            onValueChange={(v) => setFormData({...formData, asset: v, network: ''})}
+          >
+            <SelectTrigger className="bg-secondary border-border">
+              <SelectValue placeholder="Select stablecoin" />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_STABLECOINS.map((coin) => (
+                <SelectItem key={coin.value} value={coin.value}>
                   <div className="flex items-center gap-2">
-                    <AssetIcon asset="BTC" size="sm" />
-                    Bitcoin (BTC)
+                    <AssetIcon asset={coin.value} size="sm" />
+                    <span>{coin.label}</span>
+                    <span className="text-muted-foreground">({coin.symbol})</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="ETH">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="ETH" size="sm" />
-                    Ethereum (ETH)
-                  </div>
-                </SelectItem>
-                <SelectItem value="USDC">
-                  <div className="flex items-center gap-2">
-                    <AssetIcon asset="USDC" size="sm" />
-                    USD Coin (USDC)
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Network</Label>
-            <Select value={formData.network} onValueChange={(v) => setFormData({...formData, network: v})}>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Network Selection */}
+        <div className="space-y-2">
+          <Label>Network</Label>
+          {formData.asset ? (
+            <Select 
+              value={formData.network} 
+              onValueChange={(v) => setFormData({...formData, network: v})}
+            >
               <SelectTrigger className="bg-secondary border-border">
                 <SelectValue placeholder="Select network" />
               </SelectTrigger>
               <SelectContent>
-                {formData.sourceAsset === 'BTC' && <SelectItem value="bitcoin">Bitcoin Network</SelectItem>}
-                {formData.sourceAsset === 'ETH' && <SelectItem value="ethereum">Ethereum Network</SelectItem>}
-                {formData.sourceAsset === 'USDC' && (
-                  <>
-                    <SelectItem value="ethereum">Ethereum Network</SelectItem>
-                    <SelectItem value="polygon">Polygon Network</SelectItem>
-                  </>
-                )}
-                {!formData.sourceAsset && <SelectItem value="" disabled>Select asset first</SelectItem>}
+                {availableNetworks.map((network) => (
+                  <SelectItem key={network.value} value={network.value}>
+                    <div className="flex items-center justify-between w-full gap-4">
+                      <span>{network.label}</span>
+                      <span className="text-xs text-muted-foreground">{network.chain}</span>
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-          </div>
+          ) : (
+            <div className="h-10 px-3 flex items-center rounded-md bg-secondary border border-border text-muted-foreground text-sm">
+              Select a stablecoin first
+            </div>
+          )}
         </div>
+
+        {/* Warning Banner */}
+        {formData.asset && formData.network && !generatedAddress && (
+          <div className="rounded-lg bg-warning/10 border border-warning/30 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-warning">Important</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Only send <strong>{formData.asset}</strong> on <strong>{selectedNetwork?.label}</strong> to this address. 
+                  Sending any other asset or using a different network may result in permanent loss of funds.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {!generatedAddress ? (
           <Button 
             onClick={handleGenerate} 
-            disabled={createCryptoAddress.isPending || !formData.account || !formData.sourceAsset || !formData.network} 
-            className="w-full bg-primary hover:bg-primary/90"
+            disabled={createCryptoAddress.isPending || !formData.account || !formData.asset || !formData.network} 
+            className="w-full bg-module-crypto hover:bg-module-crypto/90"
           >
-            {createCryptoAddress.isPending ? 'Creating...' : 'Create Deposit Address'}
+            {createCryptoAddress.isPending ? 'Creating...' : 'Generate Deposit Address'}
           </Button>
         ) : (
           <div className="space-y-6">
+            {/* Asset + Network Badge */}
+            <div className="flex items-center justify-center gap-3 p-4 rounded-lg bg-module-crypto/10 border border-module-crypto/30">
+              <AssetIcon asset={formData.asset} size="md" />
+              <div className="text-center">
+                <p className="font-semibold text-foreground">{formData.asset}</p>
+                <p className="text-sm text-muted-foreground">{selectedNetwork?.label} Network</p>
+              </div>
+            </div>
+
             {/* QR Code Placeholder */}
             <div className="flex justify-center">
-              <div className="h-48 w-48 bg-secondary rounded-xl flex items-center justify-center border border-border">
-                <QrCode className="h-24 w-24 text-muted-foreground" />
+              <div className="h-48 w-48 bg-white rounded-xl flex items-center justify-center border-4 border-module-crypto/20">
+                <QrCode className="h-32 w-32 text-foreground" />
               </div>
             </div>
 
@@ -167,19 +246,54 @@ const CryptoDeposit: React.FC = () => {
             <div className="p-4 rounded-lg bg-secondary border border-border">
               <p className="text-sm text-muted-foreground mb-2">Deposit Address</p>
               <div className="flex items-center justify-between gap-4">
-                <p className="font-mono text-sm text-foreground break-all">{generatedAddress.address}</p>
-                <Button variant="ghost" size="icon" onClick={copyAddress}>
-                  <Copy className="h-4 w-4" />
+                <p className="font-mono text-sm text-foreground break-all flex-1">{generatedAddress.address}</p>
+                <Button 
+                  variant={copied ? "default" : "outline"} 
+                  size="sm" 
+                  onClick={copyAddress}
+                  className={copied ? "bg-success hover:bg-success/90" : ""}
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
 
+            {/* Final Warning */}
+            <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-destructive">Only send {formData.asset} on {selectedNetwork?.label}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Sending any other asset or using a different network will result in permanent loss of funds.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-4">
-              <Button variant="outline" className="flex-1 border-border" onClick={() => setGeneratedAddress(null)}>
-                Create New
+              <Button 
+                variant="outline" 
+                className="flex-1 border-border" 
+                onClick={() => {
+                  setGeneratedAddress(null);
+                  setFormData({ account: formData.account, asset: '', network: '' });
+                }}
+              >
+                Create Another
               </Button>
               <Link to="/app/crypto" className="flex-1">
-                <Button className="w-full bg-primary hover:bg-primary/90">Done</Button>
+                <Button className="w-full bg-module-crypto hover:bg-module-crypto/90">Done</Button>
               </Link>
             </div>
           </div>
