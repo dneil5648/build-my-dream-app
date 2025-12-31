@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, ArrowDownToLine, Clock, CheckCircle2, Loader2, Building2, Wallet, UserPlus, Bitcoin, CreditCard, ExternalLink, ArrowUpFromLine, RefreshCw } from 'lucide-react';
+import { Plus, ArrowDownToLine, Clock, CheckCircle2, Loader2, Building2, Wallet, UserPlus, Bitcoin, CreditCard, ExternalLink, ArrowUpFromLine, RefreshCw, ArrowRightLeft } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
 import { AccountSelector } from '@/components/shared/AccountSelector';
@@ -16,6 +16,7 @@ import { DestinationAddressList } from '@/components/shared/DestinationAddressLi
 import { AccountDetailModal } from '@/components/shared/AccountDetailModal';
 import { DepositAddressDetailModal } from '@/components/shared/DepositAddressDetailModal';
 import { ManualWithdrawalForm } from '@/components/shared/ManualWithdrawalForm';
+import { ManualConversionForm } from '@/components/shared/ManualConversionForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,7 +27,7 @@ import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAc
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
 import { useCryptoAddresses, useCryptoDestinationAddresses, useCreateCryptoDestinationAddress } from '@/hooks/useCrypto';
 import { useFiatAccounts, useRegisterFiatAccount } from '@/hooks/useFiat';
-import { useWithdrawAssets } from '@/hooks/useAssets';
+import { useWithdrawAssets, useConvertAssets } from '@/hooks/useAssets';
 import { 
   Transaction, 
   CreateIdentityRequest, 
@@ -36,7 +37,8 @@ import {
   CryptoAddress,
   RegisterFiatAccountRequest,
   CreateCryptoDestinationAddressRequest,
-  WithdrawAssetRequest
+  WithdrawAssetRequest,
+  ConvertAssetRequest
 } from '@/api/types';
 import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
@@ -79,6 +81,7 @@ const PayInsDashboard: React.FC = () => {
   const registerFiatAccount = useRegisterFiatAccount();
   const createDestinationAddress = useCreateCryptoDestinationAddress();
   const withdrawAssets = useWithdrawAssets();
+  const convertAssets = useConvertAssets();
 
   // Derived data - filter for deposit transactions
   // Filter for deposit transactions
@@ -187,6 +190,15 @@ const PayInsDashboard: React.FC = () => {
     }
   };
 
+  const handleConvert = async (data: ConvertAssetRequest) => {
+    try {
+      await convertAssets.mutateAsync(data);
+      toast.success('Conversion initiated successfully');
+    } catch (error) {
+      toast.error('Failed to process conversion');
+    }
+  };
+
   const handleAccountSelect = (account: PaxosAccount) => {
     setSelectedAccount(account);
   };
@@ -277,6 +289,9 @@ const PayInsDashboard: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="withdrawals" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
             Withdrawals
+          </TabsTrigger>
+          <TabsTrigger value="conversions" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
+            Conversions
           </TabsTrigger>
           <TabsTrigger value="accounts" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
             Accounts
@@ -537,7 +552,75 @@ const PayInsDashboard: React.FC = () => {
           </div>
         </TabsContent>
 
-        {/* Accounts Tab */}
+        {/* Conversions Tab */}
+        <TabsContent value="conversions" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <div className="glass rounded-xl p-6">
+                <div className="mb-6">
+                  <h3 className="font-semibold text-foreground">Asset Conversion</h3>
+                  <p className="text-sm text-muted-foreground">Convert between assets within your account</p>
+                </div>
+                
+                {!selectedAccountId ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ArrowRightLeft className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Select an account to make conversions</p>
+                  </div>
+                ) : (
+                  <ManualConversionForm
+                    balances={balances}
+                    selectedAccountId={selectedAccountId}
+                    onSubmit={handleConvert}
+                    isLoading={convertAssets.isPending}
+                  />
+                )}
+              </div>
+            </div>
+            
+            {/* Sidebar */}
+            <div className="space-y-6">
+              <div className="glass rounded-xl p-6">
+                <h3 className="font-semibold text-foreground mb-4">Available Balance</h3>
+                {accounts.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-sm">No accounts available</p>
+                  </div>
+                ) : (
+                  <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
+                )}
+              </div>
+              
+              <div className="glass rounded-xl p-6">
+                <h3 className="font-semibold text-foreground mb-4">Conversion Info</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <ArrowRightLeft className="h-4 w-4 text-module-payins mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Instant Swap</p>
+                      <p className="text-muted-foreground">Convert between any supported assets</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RefreshCw className="h-4 w-4 text-module-payins mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">No External Transfer</p>
+                      <p className="text-muted-foreground">Assets stay within your account</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-module-payins mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Market Rate</p>
+                      <p className="text-muted-foreground">Competitive exchange rates</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
         <TabsContent value="accounts" className="mt-6">
           <div className="glass rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
