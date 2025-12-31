@@ -13,6 +13,7 @@ import {
   CreateFiatDepositInstructionsRequest, 
   FiatNetwork, 
   AccountType,
+  RoutingNumberType,
   CryptoDestinationAddress 
 } from '@/api/types';
 
@@ -52,11 +53,15 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
   const [scenario, setScenario] = useState<DepositScenario>('hold_usd');
   const [network, setNetwork] = useState<FiatNetwork>('WIRE');
   const [accountType, setAccountType] = useState<AccountType>('CHECKING');
+  const [routingNumberType, setRoutingNumberType] = useState<RoutingNumberType>('ABA');
   const [destinationAsset, setDestinationAsset] = useState('USDC');
   const [destinationAddressId, setDestinationAddressId] = useState('');
   const [instructions, setInstructions] = useState<DepositInstructionResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [sandboxAmount, setSandboxAmount] = useState('1000.00');
+
+  // Determine if routing_number_type is required based on network
+  const requiresRoutingNumberType = network === 'WIRE' || network === 'FEDWIRE';
 
   const createInstructions = useCreateDepositInstructions();
   const sandboxDeposit = useSandboxDeposit();
@@ -74,12 +79,17 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
 
   const handleCreateInstructions = async () => {
     const payload: CreateFiatDepositInstructionsRequest = {
-      account_id: accountId, // Use local database ID
+      account_id: accountId,
       source_asset: 'USD',
       destination_asset: scenario === 'hold_usd' ? 'USD' : destinationAsset,
       fiat_network: network,
       fiat_account_type: accountType,
     };
+
+    // Add routing_number_type for WIRE/FEDWIRE networks (required)
+    if (requiresRoutingNumberType) {
+      payload.routing_number_type = routingNumberType;
+    }
 
     // Add crypto address for auto-send scenario
     if (scenario === 'convert_send' && destinationAddressId) {
@@ -260,8 +270,10 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="WIRE">Wire Transfer</SelectItem>
+                  <SelectItem value="WIRE">Wire Transfer (Domestic)</SelectItem>
                   <SelectItem value="ACH">ACH Transfer</SelectItem>
+                  <SelectItem value="FEDWIRE">Fedwire (Real-time)</SelectItem>
+                  <SelectItem value="SEPA">SEPA (Europe)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -278,6 +290,28 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
               </Select>
             </div>
           </div>
+
+          {/* Routing Number Type - Required for WIRE/FEDWIRE */}
+          {requiresRoutingNumberType && (
+            <div className="space-y-2">
+              <Label>Routing Number Type</Label>
+              <Select value={routingNumberType} onValueChange={(v) => setRoutingNumberType(v as RoutingNumberType)}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ABA">ABA (US Domestic)</SelectItem>
+                  <SelectItem value="SWIFT">SWIFT (International)</SelectItem>
+                  <SelectItem value="IBAN">IBAN (International)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {routingNumberType === 'ABA' && 'Use for US domestic wire transfers (9-digit routing number)'}
+                {routingNumberType === 'SWIFT' && 'Use for international wire transfers (BIC/SWIFT code)'}
+                {routingNumberType === 'IBAN' && 'Use for IBAN-based international transfers'}
+              </p>
+            </div>
+          )}
 
           {/* Summary */}
           <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">

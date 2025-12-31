@@ -316,7 +316,7 @@ export interface AccountBalancesResponse {
 
 // ============= Fiat Types =============
 
-export type FiatNetwork = 'WIRE' | 'CBIT' | 'DBS_ACT' | 'CUBIX' | 'SCB';
+export type FiatNetwork = 'WIRE' | 'ACH' | 'FEDWIRE' | 'SEPA' | 'CBIT' | 'DBS_ACT' | 'CUBIX' | 'SCB';
 export type AccountType = 'CHECKING' | 'SAVINGS';
 export type RoutingNumberType = 'ABA' | 'SWIFT' | 'IBAN';
 
@@ -379,7 +379,8 @@ export interface CreateFiatDepositInstructionsRequest {
   destination_asset: string;
   fiat_network: FiatNetwork;
   fiat_account_type: AccountType;
-  crypto_address_id?: string; // optional, for orchestration
+  routing_number_type?: RoutingNumberType; // Required for WIRE/FEDWIRE, optional for ACH/SEPA
+  crypto_address_id?: string; // optional, for orchestration to external wallet
 }
 
 export interface FiatDepositInstructions {
