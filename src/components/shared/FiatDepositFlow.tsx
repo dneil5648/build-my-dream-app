@@ -74,7 +74,7 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
 
   const handleCreateInstructions = async () => {
     const payload: CreateFiatDepositInstructionsRequest = {
-      account_id: paxosAccountId,
+      account_id: accountId, // Use local database ID
       source_asset: 'USD',
       destination_asset: scenario === 'hold_usd' ? 'USD' : destinationAsset,
       fiat_network: network,
