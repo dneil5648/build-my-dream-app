@@ -28,6 +28,9 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
   label = 'Account',
 }) => {
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const isWalletMode = label === 'Wallet';
+  const entityName = isWalletMode ? 'Wallet' : 'Account';
+  const entityNamePlural = isWalletMode ? 'Wallets' : 'Accounts';
 
   return (
     <DropdownMenu>
@@ -39,10 +42,10 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
               {isLoading 
                 ? 'Loading...' 
                 : selectedAccount 
-                  ? selectedAccount.nickname || `Wallet ${accounts.findIndex(a => a.id === selectedAccountId) + 1}`
+                  ? selectedAccount.nickname || `${entityName} ${accounts.findIndex(a => a.id === selectedAccountId) + 1}`
                   : accounts.length > 0 
-                    ? 'Select Wallet' 
-                    : 'No Wallets'}
+                    ? `Select ${entityName}` 
+                    : `No ${entityNamePlural}`}
             </span>
           </div>
           <ChevronDown className="h-4 w-4 opacity-50" />
@@ -51,7 +54,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
       <DropdownMenuContent align="end" className="w-[200px] bg-popover border-border">
         {accounts.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground text-sm">
-            No accounts found
+            No {entityNamePlural.toLowerCase()} found
           </div>
         ) : (
           accounts.map((account, index) => (
@@ -68,7 +71,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">
-                    {account.nickname || `Wallet ${index + 1}`}
+                    {account.nickname || `${entityName} ${index + 1}`}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {new Date(account.created_at).toLocaleDateString()}
@@ -83,7 +86,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onCreateAccount} className="cursor-pointer">
               <Plus className="h-4 w-4 mr-2" />
-              Create New Account
+              Create New {entityName}
             </DropdownMenuItem>
           </>
         )}
