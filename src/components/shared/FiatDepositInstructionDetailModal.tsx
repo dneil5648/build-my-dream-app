@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Check, ExternalLink, ArrowRight, DollarSign, Coins, Clock, Building2 } from 'lucide-react';
+import { Copy, Check, ExternalLink, ArrowRight, DollarSign, Coins, Clock, Building2, Wallet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,19 @@ const getNetworkLabel = (network: string): string => {
     'DBS_ACT': 'DBS ACT',
     'CUBIX': 'Cubix',
     'SCB': 'SCB',
+  };
+  return networks[network] || network;
+};
+
+const getCryptoNetworkLabel = (network: string): string => {
+  const networks: Record<string, string> = {
+    'BITCOIN': 'Bitcoin',
+    'ETHEREUM': 'Ethereum',
+    'POLYGON': 'Polygon',
+    'SOLANA': 'Solana',
+    'LITECOIN': 'Litecoin',
+    'STELLAR': 'Stellar',
+    'BASE': 'Base',
   };
   return networks[network] || network;
 };
@@ -56,6 +69,7 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
   const destinationAsset = instruction.destination_asset || 'USD';
   const isConversion = sourceAsset !== destinationAsset;
   const isAutoSend = instruction.instruction_type === 'DEPOSIT_CONVERT_SEND';
+  const hasDestination = instruction.destination_address || instruction.destination_crypto_address_id;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -112,7 +126,7 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
                   </div>
                   <div className="flex flex-col items-center gap-2">
                     <div className="h-14 w-14 rounded-full bg-background flex items-center justify-center border-2 border-warning/50 shadow-lg">
-                      <ExternalLink className="h-6 w-6 text-warning" />
+                      <Wallet className="h-6 w-6 text-warning" />
                     </div>
                     <div className="text-center">
                       <p className="font-semibold text-foreground">External</p>
@@ -130,6 +144,48 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
               </Badge>
             </div>
           </div>
+
+          {/* Destination Wallet Details (for auto-send) */}
+          {isAutoSend && hasDestination && (
+            <div className="p-4 rounded-lg bg-warning/10 border border-warning/20 space-y-3">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-5 w-5 text-warning" />
+                <h4 className="font-medium text-foreground">Destination Wallet</h4>
+              </div>
+              
+              <div className="space-y-2">
+                {instruction.destination_nickname && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Name</span>
+                    <span className="font-medium text-foreground">{instruction.destination_nickname}</span>
+                  </div>
+                )}
+                
+                {instruction.destination_network && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Network</span>
+                    <span className="font-medium text-foreground">{getCryptoNetworkLabel(instruction.destination_network)}</span>
+                  </div>
+                )}
+                
+                {instruction.destination_address && (
+                  <div className="p-3 rounded-lg bg-background/50 flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-muted-foreground">Address</p>
+                      <p className="font-mono text-sm text-foreground truncate">{instruction.destination_address}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopy(instruction.destination_address!, 'Address')}
+                    >
+                      {copied === 'Address' ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Instruction Details */}
           <div className="grid gap-4">
@@ -169,9 +225,9 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
             <h4 className="text-sm font-medium text-foreground">Identifiers</h4>
             
             <div className="p-3 rounded-lg bg-muted/50 flex items-center justify-between">
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">Instruction ID</p>
-                <p className="font-mono text-sm text-foreground">{instruction.deposit_instructions_id}</p>
+                <p className="font-mono text-sm text-foreground truncate">{instruction.deposit_instructions_id}</p>
               </div>
               <Button
                 variant="ghost"
@@ -184,9 +240,9 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
 
             {instruction.orchestration_rule_id && (
               <div className="p-3 rounded-lg bg-muted/50 flex items-center justify-between">
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground">Orchestration Rule ID</p>
-                  <p className="font-mono text-sm text-foreground">{instruction.orchestration_rule_id}</p>
+                  <p className="font-mono text-sm text-foreground truncate">{instruction.orchestration_rule_id}</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -200,7 +256,7 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
 
             <div className="p-3 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Account ID</p>
-              <p className="font-mono text-sm text-foreground">{instruction.paxos_account_id || instruction.account_id}</p>
+              <p className="font-mono text-sm text-foreground truncate">{instruction.paxos_account_id || instruction.account_id}</p>
             </div>
           </div>
 

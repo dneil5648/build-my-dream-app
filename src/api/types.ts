@@ -394,6 +394,11 @@ export interface FiatDepositInstructions {
   source_asset?: string;
   destination_asset?: string;
   orchestration_rule_id?: string;
+  // Linked destination for auto-send scenarios
+  destination_crypto_address_id?: string;
+  destination_address?: string;
+  destination_network?: string;
+  destination_nickname?: string;
   status: string;
   user_id: string;
   created_at: string;
