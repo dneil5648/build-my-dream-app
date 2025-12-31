@@ -540,6 +540,10 @@ export interface Transaction {
   status: TransactionStatus;
   secondary_status?: string;
   orchestration_rule_id?: string;
+  network?: string;
+  transaction_hash?: string;
+  destination_address?: string;
+  confirmations?: number;
   user_id: string;
   created_at: string;
   updated_at: string;
