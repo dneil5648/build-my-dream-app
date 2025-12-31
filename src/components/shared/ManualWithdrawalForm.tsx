@@ -99,7 +99,10 @@ export const ManualWithdrawalForm: React.FC<ManualWithdrawalFormProps> = ({
         request.network = network as any;
       }
     } else if (withdrawalType === 'fiat' && selectedFiatAccount) {
-      request.fiat_account_id = selectedFiatAccount;
+      const fiatAcc = fiatAccounts.find(a => a.id === selectedFiatAccount);
+      if (fiatAcc?.paxos_fiat_account_id) {
+        request.fiat_account_id = fiatAcc.paxos_fiat_account_id;
+      }
     } else if (withdrawalType === 'internal' && selectedDestinationAccount) {
       request.destination_account_id = selectedDestinationAccount;
     }
