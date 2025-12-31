@@ -16,17 +16,95 @@ import { CreateIdentityForm } from '@/components/shared/CreateIdentityForm';
 import { CreateAccountForm } from '@/components/shared/CreateAccountForm';
 import { CreateIdentityRequest, CreateAccountRequest } from '@/api/types';
 
-// Available assets based on API spec
+// Available assets based on API spec and supported icons
 const AVAILABLE_ASSETS = [
+  // Major Cryptocurrencies
   { id: 'BTC', name: 'Bitcoin' },
   { id: 'ETH', name: 'Ethereum' },
-  { id: 'USDC', name: 'USD Coin' },
-  { id: 'USDP', name: 'Pax Dollar' },
-  { id: 'PYUSD', name: 'PayPal USD' },
   { id: 'SOL', name: 'Solana' },
   { id: 'LTC', name: 'Litecoin' },
   { id: 'BCH', name: 'Bitcoin Cash' },
+  { id: 'XLM', name: 'Stellar' },
+  { id: 'LINK', name: 'Chainlink' },
+  { id: 'UNI', name: 'Uniswap' },
+  { id: 'MATIC', name: 'Polygon' },
+  { id: 'ARB', name: 'Arbitrum' },
+  // Stablecoins
+  { id: 'USDC', name: 'USD Coin' },
+  { id: 'USDT', name: 'Tether' },
+  { id: 'USDP', name: 'Pax Dollar' },
+  { id: 'PYUSD', name: 'PayPal USD' },
+  { id: 'USDG', name: 'Global Dollar' },
+  { id: 'DAI', name: 'Dai' },
+  { id: 'BUSD', name: 'Binance USD' },
+  { id: 'USDL', name: 'USDL' },
+  { id: 'PAX', name: 'Paxos Standard' },
+  // Gold & Commodities
   { id: 'PAXG', name: 'PAX Gold' },
+  // Exchange Tokens
+  { id: 'BNB', name: 'BNB' },
+  { id: 'CRO', name: 'Cronos' },
+  { id: 'OKB', name: 'OKB' },
+  { id: 'KCS', name: 'KuCoin Token' },
+  { id: 'GT', name: 'Gate Token' },
+  { id: 'LEO', name: 'LEO Token' },
+  { id: 'BGB', name: 'Bitget Token' },
+  { id: 'NEXO', name: 'Nexo' },
+  // DeFi & Gaming
+  { id: 'AAVE', name: 'Aave' },
+  { id: 'COMP', name: 'Compound' },
+  { id: 'CRV', name: 'Curve' },
+  { id: 'SUSHI', name: 'SushiSwap' },
+  { id: 'YFI', name: 'yearn.finance' },
+  { id: 'GRT', name: 'The Graph' },
+  { id: 'AXS', name: 'Axie Infinity' },
+  { id: 'MANA', name: 'Decentraland' },
+  { id: 'SAND', name: 'The Sandbox' },
+  { id: 'GALA', name: 'Gala' },
+  { id: 'CHZ', name: 'Chiliz' },
+  { id: 'ENJ', name: 'Enjin Coin' },
+  { id: 'BAT', name: 'Basic Attention Token' },
+  { id: 'LRC', name: 'Loopring' },
+  // Layer 2 & Infrastructure
+  { id: 'BASE', name: 'Base' },
+  { id: 'INJ', name: 'Injective' },
+  { id: 'QNT', name: 'Quant' },
+  { id: 'RENDER', name: 'Render' },
+  { id: 'FET', name: 'Fetch.ai' },
+  { id: 'ONDO', name: 'Ondo' },
+  { id: 'JUP', name: 'Jupiter' },
+  { id: 'WLD', name: 'Worldcoin' },
+  { id: 'MNT', name: 'Mantle' },
+  { id: 'EGLD', name: 'MultiversX' },
+  { id: 'HNT', name: 'Helium' },
+  { id: 'IOTX', name: 'IoTeX' },
+  { id: 'SKY', name: 'Sky' },
+  { id: 'FTN', name: 'Fasttoken' },
+  { id: 'ENA', name: 'Ethena' },
+  { id: 'INK', name: 'Ink' },
+  // Meme Coins
+  { id: 'SHIB', name: 'Shiba Inu' },
+  { id: 'PEPE', name: 'Pepe' },
+  { id: 'BONK', name: 'Bonk' },
+  { id: 'WIF', name: 'dogwifhat' },
+  { id: 'FARTCOIN', name: 'Fartcoin' },
+  { id: 'PENGU', name: 'Pudgy Penguins' },
+  { id: 'TRUMP', name: 'Trump' },
+  { id: 'SPX', name: 'SPX6900' },
+  { id: 'VIRTUAL', name: 'Virtual Protocol' },
+  { id: 'PUMP', name: 'Pump' },
+  { id: 'APE', name: 'ApeCoin' },
+  // Wrapped Assets
+  { id: 'WBTC', name: 'Wrapped Bitcoin' },
+  // Fiat
+  { id: 'USD', name: 'US Dollar' },
+  { id: 'EURO', name: 'Euro' },
+  { id: 'BRL', name: 'Brazilian Real' },
+  { id: 'SGD', name: 'Singapore Dollar' },
+  { id: 'BMD', name: 'Bermudian Dollar' },
+  // Other
+  { id: 'AMP', name: 'Amp' },
+  { id: 'HUSD', name: 'HUSD' },
 ];
 
 export interface AssetMapping {
