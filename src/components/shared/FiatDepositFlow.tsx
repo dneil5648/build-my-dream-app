@@ -67,6 +67,27 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
   // Fund account state
   const [selectedInstructionId, setSelectedInstructionId] = useState('');
   const [sandboxAmount, setSandboxAmount] = useState('1000.00');
+  const [senderAccountNumber, setSenderAccountNumber] = useState('');
+  const [senderAddress, setSenderAddress] = useState({
+    country: 'US',
+    address1: '',
+    address2: '',
+    city: '',
+    province: '',
+    zip_code: ''
+  });
+  const [routingDetails, setRoutingDetails] = useState({
+    routing_number_type: 'ABA' as 'ABA' | 'SWIFT' | 'IBAN',
+    routing_number: '',
+    bank_name: '',
+    bank_address: {
+      country: 'US',
+      address1: '',
+      city: '',
+      province: '',
+      zip_code: ''
+    }
+  });
 
   // Determine if routing_number_type is required based on network
   const requiresRoutingNumberType = network === 'WIRE' || network === 'FEDWIRE';
@@ -128,9 +149,33 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
     }
   };
 
+  // Validate fund account form
+  const isFundFormValid = () => {
+    return (
+      selectedInstructionId &&
+      sandboxAmount &&
+      senderAccountNumber &&
+      senderAddress.address1 &&
+      senderAddress.city &&
+      senderAddress.province &&
+      senderAddress.zip_code &&
+      routingDetails.routing_number &&
+      routingDetails.bank_name &&
+      routingDetails.bank_address.address1 &&
+      routingDetails.bank_address.city &&
+      routingDetails.bank_address.province &&
+      routingDetails.bank_address.zip_code
+    );
+  };
+
   const handleFundAccount = async () => {
     if (!selectedInstructionId) {
       toast.error('Please select a deposit instruction');
+      return;
+    }
+
+    if (!isFundFormValid()) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
@@ -139,24 +184,25 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
         deposit_instruction_id: selectedInstructionId,
         amount: sandboxAmount,
         asset: 'USD',
-        account_number: '9876543210',
+        account_number: senderAccountNumber,
         account_owner_address: {
-          country: 'US',
-          address1: '123 Main Street',
-          city: 'New York',
-          province: 'NY',
-          zip_code: '10001'
+          country: senderAddress.country,
+          address1: senderAddress.address1,
+          address2: senderAddress.address2 || undefined,
+          city: senderAddress.city,
+          province: senderAddress.province,
+          zip_code: senderAddress.zip_code
         },
         routing_details: {
-          routing_number_type: 'ABA',
-          routing_number: '021000021',
-          bank_name: 'Test Bank',
+          routing_number_type: routingDetails.routing_number_type,
+          routing_number: routingDetails.routing_number,
+          bank_name: routingDetails.bank_name,
           bank_address: {
-            country: 'US',
-            address1: '456 Bank Street',
-            city: 'New York',
-            province: 'NY',
-            zip_code: '10002'
+            country: routingDetails.bank_address.country,
+            address1: routingDetails.bank_address.address1,
+            city: routingDetails.bank_address.city,
+            province: routingDetails.bank_address.province,
+            zip_code: routingDetails.bank_address.zip_code
           }
         }
       });
@@ -166,6 +212,14 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
       setStep('create');
       setSelectedInstructionId('');
       setSandboxAmount('1000.00');
+      setSenderAccountNumber('');
+      setSenderAddress({ country: 'US', address1: '', address2: '', city: '', province: '', zip_code: '' });
+      setRoutingDetails({
+        routing_number_type: 'ABA',
+        routing_number: '',
+        bank_name: '',
+        bank_address: { country: 'US', address1: '', city: '', province: '', zip_code: '' }
+      });
     } catch (error) {
       toast.error('Failed to simulate deposit');
     }
@@ -561,18 +615,184 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
             </div>
           )}
 
-          {/* Amount */}
-          <div className="space-y-2">
-            <Label>Amount to Deposit</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+          {/* Amount & Account Number */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Amount to Deposit *</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  type="text"
+                  placeholder="1000.00"
+                  value={sandboxAmount}
+                  onChange={(e) => setSandboxAmount(e.target.value)}
+                  className="pl-8 bg-secondary border-border"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Your Bank Account # *</Label>
               <Input
                 type="text"
-                placeholder="1000.00"
-                value={sandboxAmount}
-                onChange={(e) => setSandboxAmount(e.target.value)}
-                className="pl-8 bg-secondary border-border"
+                placeholder="123456789"
+                value={senderAccountNumber}
+                onChange={(e) => setSenderAccountNumber(e.target.value)}
+                className="bg-secondary border-border"
               />
+            </div>
+          </div>
+
+          {/* Sender Address Section */}
+          <div className="space-y-3">
+            <Label className="text-base font-medium">Your Address</Label>
+            <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border">
+              <div className="space-y-2">
+                <Label className="text-sm">Street Address *</Label>
+                <Input
+                  placeholder="123 Main Street"
+                  value={senderAddress.address1}
+                  onChange={(e) => setSenderAddress({ ...senderAddress, address1: e.target.value })}
+                  className="bg-secondary border-border"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Apt/Suite (Optional)</Label>
+                <Input
+                  placeholder="Apt 4B"
+                  value={senderAddress.address2}
+                  onChange={(e) => setSenderAddress({ ...senderAddress, address2: e.target.value })}
+                  className="bg-secondary border-border"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-sm">City *</Label>
+                  <Input
+                    placeholder="New York"
+                    value={senderAddress.city}
+                    onChange={(e) => setSenderAddress({ ...senderAddress, city: e.target.value })}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">State *</Label>
+                  <Input
+                    placeholder="NY"
+                    value={senderAddress.province}
+                    onChange={(e) => setSenderAddress({ ...senderAddress, province: e.target.value })}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">ZIP *</Label>
+                  <Input
+                    placeholder="10001"
+                    value={senderAddress.zip_code}
+                    onChange={(e) => setSenderAddress({ ...senderAddress, zip_code: e.target.value })}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bank Routing Details Section */}
+          <div className="space-y-3">
+            <Label className="text-base font-medium">Bank Routing Details</Label>
+            <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-sm">Routing Type *</Label>
+                  <Select 
+                    value={routingDetails.routing_number_type} 
+                    onValueChange={(v) => setRoutingDetails({ ...routingDetails, routing_number_type: v as 'ABA' | 'SWIFT' | 'IBAN' })}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ABA">ABA (US)</SelectItem>
+                      <SelectItem value="SWIFT">SWIFT</SelectItem>
+                      <SelectItem value="IBAN">IBAN</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Routing Number *</Label>
+                  <Input
+                    placeholder="021000021"
+                    value={routingDetails.routing_number}
+                    onChange={(e) => setRoutingDetails({ ...routingDetails, routing_number: e.target.value })}
+                    className="bg-secondary border-border"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Bank Name *</Label>
+                <Input
+                  placeholder="Chase Bank"
+                  value={routingDetails.bank_name}
+                  onChange={(e) => setRoutingDetails({ ...routingDetails, bank_name: e.target.value })}
+                  className="bg-secondary border-border"
+                />
+              </div>
+
+              {/* Bank Address */}
+              <div className="pt-2 border-t border-border/50">
+                <Label className="text-sm text-muted-foreground mb-2 block">Bank Address</Label>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Street Address *</Label>
+                    <Input
+                      placeholder="270 Park Avenue"
+                      value={routingDetails.bank_address.address1}
+                      onChange={(e) => setRoutingDetails({ 
+                        ...routingDetails, 
+                        bank_address: { ...routingDetails.bank_address, address1: e.target.value }
+                      })}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm">City *</Label>
+                      <Input
+                        placeholder="New York"
+                        value={routingDetails.bank_address.city}
+                        onChange={(e) => setRoutingDetails({ 
+                          ...routingDetails, 
+                          bank_address: { ...routingDetails.bank_address, city: e.target.value }
+                        })}
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">State *</Label>
+                      <Input
+                        placeholder="NY"
+                        value={routingDetails.bank_address.province}
+                        onChange={(e) => setRoutingDetails({ 
+                          ...routingDetails, 
+                          bank_address: { ...routingDetails.bank_address, province: e.target.value }
+                        })}
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">ZIP *</Label>
+                      <Input
+                        placeholder="10017"
+                        value={routingDetails.bank_address.zip_code}
+                        onChange={(e) => setRoutingDetails({ 
+                          ...routingDetails, 
+                          bank_address: { ...routingDetails.bank_address, zip_code: e.target.value }
+                        })}
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -586,7 +806,7 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
             </Button>
             <Button 
               onClick={handleFundAccount}
-              disabled={sandboxDeposit.isPending || !sandboxAmount || !selectedInstructionId}
+              disabled={sandboxDeposit.isPending || !isFundFormValid()}
               className="flex-1 bg-success hover:bg-success/90"
             >
               {sandboxDeposit.isPending ? (
