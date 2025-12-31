@@ -34,13 +34,14 @@ import { Progress } from '@/components/ui/progress';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
 import { useCryptoAddresses, useCryptoDestinationAddresses, useCreateCryptoDestinationAddress, useCreateCryptoAddress } from '@/hooks/useCrypto';
+import { cryptoService } from '@/api';
 import { useFiatAccounts, useRegisterFiatAccount, useDepositInstructions } from '@/hooks/useFiat';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useWithdrawAssets, useConvertAssets } from '@/hooks/useAssets';
 import { 
   CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, PaxosAccount, Transaction,
   CryptoAddress, CreateCryptoDestinationAddressRequest, RegisterFiatAccountRequest,
-  FiatDepositInstructions, WithdrawAssetRequest, ConvertAssetRequest
+  FiatDepositInstructions, WithdrawAssetRequest, ConvertAssetRequest, CreateCryptoAddressRequest
 } from '@/api/types';
 import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
@@ -213,11 +214,51 @@ const TreasuryDashboard: React.FC = () => {
 
   const handleCreateAccount = async (data: CreateAccountRequest) => {
     try {
-      await createAccount.mutateAsync(data);
+      // Step 1: Create the account
+      const accountResult = await createAccount.mutateAsync(data);
+      const createdAccount = accountResult?.data as PaxosAccount;
+      
+      if (!createdAccount?.id) {
+        throw new Error('Account created but no ID returned');
+      }
+      
       toast.success('Account created successfully');
+      
+      // Step 2: Create a deposit address with no conversion (USDC on Ethereum as default)
+      const depositAddressPayload: CreateCryptoAddressRequest = {
+        account_id: createdAccount.id,
+        network: 'ETHEREUM',
+        source_asset: 'USDC',
+        destination_asset: 'USDC', // Same asset = no conversion
+      };
+      
+      const depositAddressResult = await cryptoService.createCryptoAddress(depositAddressPayload);
+      const createdDepositAddress = depositAddressResult?.data as CryptoAddress;
+      
+      if (!createdDepositAddress?.wallet_address) {
+        toast.warning('Account created but deposit address generation failed');
+        setShowCreateAccount(false);
+        return;
+      }
+      
+      toast.success('Deposit address generated');
+      
+      // Step 3: Create a destination crypto address from the deposit address
+      const destinationPayload: CreateCryptoDestinationAddressRequest = {
+        account_id: createdAccount.id,
+        crypto_network: 'ETHEREUM',
+        address: createdDepositAddress.wallet_address,
+        nickname: `${data.nickname || 'Treasury Account'} - Deposit`,
+        bookmarked_status: true,
+      };
+      
+      await createDestinationAddress.mutateAsync(destinationPayload);
+      toast.success('Destination address registered');
+      
       setShowCreateAccount(false);
     } catch (error) {
-      toast.error('Failed to create account');
+      console.error('Account creation flow error:', error);
+      toast.error('Failed to complete account setup');
     }
   };
 
