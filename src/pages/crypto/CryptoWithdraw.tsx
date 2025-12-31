@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowUpFromLine, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowUpFromLine, AlertTriangle, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -10,29 +10,99 @@ import { toast } from 'sonner';
 import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
 import { useCalculateWithdrawalFee } from '@/hooks/useCrypto';
 import { useWithdrawAssets } from '@/hooks/useAssets';
-import { CryptoNetwork } from '@/api/types';
+import { CryptoNetwork, AccountBalanceItem } from '@/api/types';
+
+// Stablecoins only - per spec
+const SUPPORTED_STABLECOINS = ['USDC', 'USDT', 'USDP', 'PYUSD', 'USDG', 'DAI'];
+
+// Network options per asset - must match exactly for withdrawals
+const NETWORK_OPTIONS: Record<string, { value: string; label: string; addressHint: string }[]> = {
+  USDC: [
+    { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
+    { value: 'SOLANA', label: 'Solana', addressHint: 'Base58 address' },
+    { value: 'POLYGON', label: 'Polygon', addressHint: 'Starts with 0x' },
+    { value: 'BASE', label: 'Base', addressHint: 'Starts with 0x' },
+    { value: 'STELLAR', label: 'Stellar', addressHint: 'Starts with G' },
+  ],
+  USDT: [
+    { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
+    { value: 'SOLANA', label: 'Solana', addressHint: 'Base58 address' },
+    { value: 'POLYGON', label: 'Polygon', addressHint: 'Starts with 0x' },
+  ],
+  USDP: [
+    { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
+  ],
+  PYUSD: [
+    { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
+    { value: 'SOLANA', label: 'Solana', addressHint: 'Base58 address' },
+  ],
+  USDG: [
+    { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
+  ],
+  DAI: [
+    { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
+    { value: 'POLYGON', label: 'Polygon', addressHint: 'Starts with 0x' },
+  ],
+};
+
+// Simple address format validation
+const validateAddress = (address: string, network: string): { valid: boolean; message?: string } => {
+  if (!address) return { valid: false, message: 'Address is required' };
+  
+  if (['ETHEREUM', 'POLYGON', 'BASE'].includes(network)) {
+    if (!address.startsWith('0x') || address.length !== 42) {
+      return { valid: false, message: 'Invalid Ethereum-style address. Must start with 0x and be 42 characters.' };
+    }
+  } else if (network === 'SOLANA') {
+    if (address.length < 32 || address.length > 44) {
+      return { valid: false, message: 'Invalid Solana address. Must be 32-44 characters.' };
+    }
+  } else if (network === 'STELLAR') {
+    if (!address.startsWith('G') || address.length !== 56) {
+      return { valid: false, message: 'Invalid Stellar address. Must start with G and be 56 characters.' };
+    }
+  }
+  
+  return { valid: true };
+};
 
 const CryptoWithdraw: React.FC = () => {
   const [formData, setFormData] = useState({
     account: '',
     asset: '',
-    type: 'external',
+    network: '',
     destination: '',
     amount: '',
-    network: '',
   });
   const [fee, setFee] = useState<string | null>(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'CRYPTO_WALLET' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(formData.account);
   const calculateFee = useCalculateWithdrawalFee();
   const withdrawAssets = useWithdrawAssets();
 
   const accounts = accountsResponse?.data || [];
-  const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
+  const allBalances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
+  // Filter to only show stablecoins with balance
+  const balances = allBalances.filter((b: AccountBalanceItem) => 
+    SUPPORTED_STABLECOINS.includes(b.asset) && parseFloat(b.available) > 0
+  );
+
+  const availableNetworks = formData.asset ? NETWORK_OPTIONS[formData.asset] || [] : [];
+  const selectedNetwork = availableNetworks.find(n => n.value === formData.network);
+  const selectedBalance = balances.find((b: AccountBalanceItem) => b.asset === formData.asset);
+  const addressValidation = formData.destination && formData.network 
+    ? validateAddress(formData.destination, formData.network) 
+    : { valid: true };
 
   const handleCalculateFee = async () => {
     if (!formData.account || !formData.asset || !formData.network || !formData.amount || !formData.destination) {
+      return;
+    }
+
+    if (!addressValidation.valid) {
+      toast.error(addressValidation.message);
       return;
     }
 
@@ -52,39 +122,142 @@ const CryptoWithdraw: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.account || !formData.asset || !formData.destination || !formData.amount) {
+  const handleProceed = () => {
+    if (!formData.account || !formData.asset || !formData.destination || !formData.amount || !formData.network) {
       toast.error('Please fill in all required fields');
       return;
     }
 
+    if (!addressValidation.valid) {
+      toast.error(addressValidation.message);
+      return;
+    }
+
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     try {
       await withdrawAssets.mutateAsync({
         account_id: formData.account,
         source_asset: formData.asset,
-        destination_asset: formData.asset, // Same asset (no conversion)
-        destination_address: formData.type === 'external' ? formData.destination : undefined,
-        destination_account_id: formData.type === 'internal' ? formData.destination : undefined,
+        destination_asset: formData.asset, // Same asset - no conversion
+        destination_address: formData.destination,
         amount: formData.amount,
-        network: formData.type === 'external' ? (formData.network as CryptoNetwork) : undefined,
+        network: formData.network as CryptoNetwork,
       });
       toast.success('Withdrawal initiated successfully');
+      setShowConfirmation(false);
       // Reset form
       setFormData({
         account: formData.account,
         asset: '',
-        type: 'external',
+        network: '',
         destination: '',
         amount: '',
-        network: '',
       });
       setFee(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to initiate withdrawal');
     }
   };
+
+  const selectedWallet = accounts.find(a => a.paxos_account_id === formData.account);
+
+  if (showConfirmation) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => setShowConfirmation(false)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Confirm Withdrawal</h2>
+            <p className="text-muted-foreground">Review and confirm your transaction</p>
+          </div>
+        </div>
+
+        <div className="glass rounded-xl p-8 space-y-6">
+          {/* Confirmation Summary */}
+          <div className="text-center space-y-4">
+            <div className="flex justify-center">
+              <AssetIcon asset={formData.asset} size="lg" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-foreground">{formData.amount} {formData.asset}</p>
+              <p className="text-muted-foreground">on {selectedNetwork?.label} Network</p>
+            </div>
+          </div>
+
+          {/* Details */}
+          <div className="space-y-4 pt-4 border-t border-border">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">From</span>
+              <span className="font-medium text-foreground">{selectedWallet?.nickname || 'Wallet'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">To</span>
+              <span className="font-mono text-sm text-foreground truncate max-w-[200px]">{formData.destination}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Network</span>
+              <span className="font-medium text-foreground">{selectedNetwork?.label}</span>
+            </div>
+            {fee && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Network Fee</span>
+                <span className="font-medium text-foreground">{fee} {formData.asset}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Explicit Confirmation Message */}
+          <div className="rounded-lg bg-warning/10 border border-warning/30 p-4">
+            <p className="text-sm text-center text-foreground">
+              You are sending <strong>{formData.amount} {formData.asset}</strong> on <strong>{selectedNetwork?.label}</strong> to:
+            </p>
+            <p className="font-mono text-xs text-center text-muted-foreground mt-2 break-all">
+              {formData.destination}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4 pt-4">
+            <Button 
+              variant="outline" 
+              className="flex-1" 
+              onClick={() => setShowConfirmation(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              className="flex-1 bg-warning hover:bg-warning/90 text-warning-foreground"
+              onClick={handleConfirmSubmit}
+              disabled={withdrawAssets.isPending}
+            >
+              {withdrawAssets.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirm Withdrawal
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -96,164 +269,133 @@ const CryptoWithdraw: React.FC = () => {
           </Button>
         </Link>
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Crypto Withdraw</h2>
-          <p className="text-muted-foreground">Withdraw crypto to external wallet or internal account</p>
+          <h2 className="text-2xl font-bold text-foreground">Send Stablecoins</h2>
+          <p className="text-muted-foreground">Withdraw to an external wallet</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="glass rounded-xl p-8 space-y-6">
-        {/* Withdrawal Type Toggle */}
-        <div className="flex rounded-lg bg-secondary p-1">
-          <button
-            type="button"
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-              formData.type === 'external' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-            }`}
-            onClick={() => setFormData({...formData, type: 'external'})}
-          >
-            External Wallet
-          </button>
-          <button
-            type="button"
-            className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-              formData.type === 'internal' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
-            }`}
-            onClick={() => setFormData({...formData, type: 'internal'})}
-          >
-            Internal Transfer
-          </button>
-        </div>
-
+      <div className="glass rounded-xl p-8 space-y-6">
+        {/* Wallet Selection */}
         <div className="space-y-2">
-          <Label>Source Account</Label>
+          <Label>From Wallet</Label>
           <Select
             value={formData.account}
-            onValueChange={(v) => setFormData({...formData, account: v, asset: '', amount: ''})}
+            onValueChange={(v) => setFormData({...formData, account: v, asset: '', amount: '', network: ''})}
             disabled={loadingAccounts}
           >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
+              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select wallet'} />
             </SelectTrigger>
             <SelectContent>
               {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.paxos_account_id}>
-                  Account {account.paxos_account_id.slice(0, 8)}...
+                  {account.nickname || `Wallet ${account.paxos_account_id.slice(0, 8)}...`}
                 </SelectItem>
               ))}
               {accounts.length === 0 && !loadingAccounts && (
-                <SelectItem value="" disabled>No accounts found</SelectItem>
+                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  No wallets found
+                </div>
               )}
             </SelectContent>
           </Select>
         </div>
 
+        {/* Asset Selection */}
         <div className="space-y-2">
-          <Label>Asset</Label>
+          <Label>Stablecoin</Label>
           <Select
             value={formData.asset}
-            onValueChange={(v) => { setFormData({...formData, asset: v, network: ''}); setFee(null); }}
+            onValueChange={(v) => { 
+              setFormData({...formData, asset: v, network: '', amount: ''}); 
+              setFee(null); 
+            }}
             disabled={!formData.account || loadingBalances}
           >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder={loadingBalances ? 'Loading...' : formData.account ? 'Select asset' : 'Select account first'} />
+              <SelectValue placeholder={
+                loadingBalances ? 'Loading...' : 
+                !formData.account ? 'Select wallet first' : 
+                'Select stablecoin'
+              } />
             </SelectTrigger>
             <SelectContent>
-              {balances.map((balance) => (
+              {balances.map((balance: AccountBalanceItem) => (
                 <SelectItem key={balance.asset} value={balance.asset}>
                   <div className="flex items-center justify-between w-full gap-4">
                     <div className="flex items-center gap-2">
                       <AssetIcon asset={balance.asset} size="sm" />
-                      {balance.asset}
+                      <span>{balance.asset}</span>
                     </div>
-                    <span className="text-muted-foreground">{balance.available}</span>
+                    <span className="text-muted-foreground">{parseFloat(balance.available).toFixed(2)}</span>
                   </div>
                 </SelectItem>
               ))}
               {balances.length === 0 && !loadingBalances && formData.account && (
-                <SelectItem value="" disabled>No assets available</SelectItem>
+                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  No stablecoin balances
+                </div>
               )}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Network Selection for External Wallets */}
-        {formData.type === 'external' && formData.asset && (
-          <div className="space-y-2">
-            <Label>Network</Label>
-            <Select value={formData.network} onValueChange={(v) => { setFormData({...formData, network: v}); handleCalculateFee(); }}>
+        {/* Network Selection */}
+        <div className="space-y-2">
+          <Label>Network</Label>
+          {formData.asset ? (
+            <Select 
+              value={formData.network} 
+              onValueChange={(v) => { 
+                setFormData({...formData, network: v}); 
+                setFee(null);
+              }}
+            >
               <SelectTrigger className="bg-secondary border-border">
                 <SelectValue placeholder="Select network" />
               </SelectTrigger>
               <SelectContent>
-                {formData.asset === 'BTC' && (
-                  <>
-                    <SelectItem value="BITCOIN">Bitcoin Network</SelectItem>
-                    <SelectItem value="LIGHTNING">Lightning Network</SelectItem>
-                  </>
-                )}
-                {formData.asset === 'ETH' && (
-                  <>
-                    <SelectItem value="ETHEREUM">Ethereum Network</SelectItem>
-                    <SelectItem value="ARBITRUM">Arbitrum</SelectItem>
-                    <SelectItem value="OPTIMISM">Optimism</SelectItem>
-                  </>
-                )}
-                {formData.asset === 'USDC' && (
-                  <>
-                    <SelectItem value="ETHEREUM">Ethereum Network</SelectItem>
-                    <SelectItem value="POLYGON">Polygon Network</SelectItem>
-                    <SelectItem value="SOLANA">Solana</SelectItem>
-                    <SelectItem value="ARBITRUM">Arbitrum</SelectItem>
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label>{formData.type === 'external' ? 'Destination Address' : 'Destination Account'}</Label>
-          {formData.type === 'external' ? (
-            <Input
-              placeholder="Enter wallet address"
-              value={formData.destination}
-              onChange={(e) => setFormData({...formData, destination: e.target.value})}
-              className="bg-secondary border-border font-mono"
-            />
-          ) : (
-            <Select value={formData.destination} onValueChange={(v) => setFormData({...formData, destination: v})}>
-              <SelectTrigger className="bg-secondary border-border">
-                <SelectValue placeholder="Select destination account" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.filter(a => a.paxos_account_id !== formData.account).map((account) => (
-                  <SelectItem key={account.id} value={account.paxos_account_id}>
-                    Account {account.paxos_account_id.slice(0, 8)}...
+                {availableNetworks.map((network) => (
+                  <SelectItem key={network.value} value={network.value}>
+                    {network.label}
                   </SelectItem>
                 ))}
-                {accounts.filter(a => a.paxos_account_id !== formData.account).length === 0 && (
-                  <SelectItem value="" disabled>No other accounts available</SelectItem>
-                )}
               </SelectContent>
             </Select>
+          ) : (
+            <div className="h-10 px-3 flex items-center rounded-md bg-secondary border border-border text-muted-foreground text-sm">
+              Select a stablecoin first
+            </div>
           )}
         </div>
 
+        {/* Destination Address */}
+        <div className="space-y-2">
+          <Label>Destination Address</Label>
+          <Input
+            placeholder={selectedNetwork?.addressHint || 'Enter wallet address'}
+            value={formData.destination}
+            onChange={(e) => setFormData({...formData, destination: e.target.value})}
+            className={`bg-secondary border-border font-mono ${
+              formData.destination && !addressValidation.valid ? 'border-destructive' : ''
+            }`}
+          />
+          {formData.destination && !addressValidation.valid && (
+            <p className="text-sm text-destructive">{addressValidation.message}</p>
+          )}
+        </div>
+
+        {/* Amount */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>Amount</Label>
-            {formData.asset && balances.find(b => b.asset === formData.asset) && (
+            {selectedBalance && (
               <button
                 type="button"
                 className="text-xs text-primary hover:underline"
-                onClick={() => {
-                  const balance = balances.find(b => b.asset === formData.asset);
-                  if (balance) {
-                    setFormData({...formData, amount: balance.available});
-                  }
-                }}
+                onClick={() => setFormData({...formData, amount: selectedBalance.available})}
               >
-                Max: {balances.find(b => b.asset === formData.asset)?.available}
+                Max: {parseFloat(selectedBalance.available).toFixed(6)} {formData.asset}
               </button>
             )}
           </div>
@@ -261,35 +403,80 @@ const CryptoWithdraw: React.FC = () => {
             type="text"
             placeholder="0.00"
             value={formData.amount}
-            onChange={(e) => setFormData({...formData, amount: e.target.value})}
+            onChange={(e) => {
+              setFormData({...formData, amount: e.target.value});
+              setFee(null);
+            }}
             className="bg-secondary border-border"
           />
         </div>
 
-        {/* Fee Estimate */}
-        {fee && formData.type === 'external' && (
-          <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
+        {/* Calculate Fee Button */}
+        {formData.amount && formData.destination && formData.network && !fee && (
+          <Button
+            variant="outline"
+            onClick={handleCalculateFee}
+            disabled={calculateFee.isPending || !addressValidation.valid}
+            className="w-full"
+          >
+            {calculateFee.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Calculating...
+              </>
+            ) : (
+              'Calculate Network Fee'
+            )}
+          </Button>
+        )}
+
+        {/* Fee Display */}
+        {fee && (
+          <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Network Fee</span>
+              <span className="font-medium text-foreground">{fee} {formData.asset}</span>
+            </div>
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+              <span className="text-muted-foreground">Total</span>
+              <span className="font-semibold text-foreground">
+                {(parseFloat(formData.amount) + parseFloat(fee)).toFixed(6)} {formData.asset}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Network Warning */}
+        {formData.network && (
+          <div className="rounded-lg bg-warning/10 border border-warning/30 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-warning">Network Fee</p>
-                <p className="text-sm text-muted-foreground">
-                  Estimated fee: {fee} {formData.asset}
+                <p className="text-sm font-medium text-warning">Network Match Required</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Ensure the destination address supports <strong>{formData.asset}</strong> on <strong>{selectedNetwork?.label}</strong>. 
+                  Sending to an incompatible address will result in permanent loss.
                 </p>
               </div>
             </div>
           </div>
         )}
 
+        {/* Submit Button */}
         <Button
-          type="submit"
-          disabled={withdrawAssets.isPending || !formData.amount || !formData.destination || (formData.type === 'external' && !formData.network)}
+          onClick={handleProceed}
+          disabled={
+            !formData.amount || 
+            !formData.destination || 
+            !formData.network || 
+            !addressValidation.valid
+          }
           className="w-full bg-warning hover:bg-warning/90 text-warning-foreground"
         >
           <ArrowUpFromLine className="h-4 w-4 mr-2" />
-          {withdrawAssets.isPending ? 'Processing...' : 'Withdraw'}
+          Review Withdrawal
         </Button>
-      </form>
+      </div>
     </div>
   );
 };
