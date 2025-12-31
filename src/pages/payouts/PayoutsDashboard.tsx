@@ -473,7 +473,7 @@ const PayoutsDashboard: React.FC = () => {
             <DialogTitle>Create Account</DialogTitle>
           </DialogHeader>
           <CreateAccountForm
-            identities={identities}
+            identities={identities.filter((i: PaxosIdentity) => i.identity_type?.toUpperCase() === 'INSTITUTION')}
             onSubmit={handleCreateAccount}
             isLoading={createAccount.isPending}
             module="PAY_OUTS"
