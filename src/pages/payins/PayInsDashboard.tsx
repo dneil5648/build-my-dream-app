@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, ArrowDownToLine, Clock, CheckCircle2, Loader2, Building2, Wallet, UserPlus, Bitcoin, CreditCard, ExternalLink } from 'lucide-react';
+import { Plus, ArrowDownToLine, Clock, CheckCircle2, Loader2, Building2, Wallet, UserPlus, Bitcoin, CreditCard, ExternalLink, ArrowUpFromLine, RefreshCw } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
 import { AccountSelector } from '@/components/shared/AccountSelector';
@@ -18,6 +18,7 @@ import { DepositAddressDetailModal } from '@/components/shared/DepositAddressDet
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
@@ -305,43 +306,76 @@ const PayInsDashboard: React.FC = () => {
                 />
               </div>
 
-              {/* Recent Deposits */}
+              {/* Recent Transactions */}
               <div className="glass rounded-xl p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-semibold text-foreground">Recent Deposits</h3>
+                  <h3 className="font-semibold text-foreground">Recent Transactions</h3>
                 </div>
                 
                 {loadingTransactions ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
-                ) : deposits.length === 0 ? (
+                ) : allTransactions.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <ArrowDownToLine className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No deposits yet</p>
-                    <p className="text-sm">Deposits will appear here once received</p>
+                    <p>No transactions yet</p>
+                    <p className="text-sm">Transactions will appear here once processed</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {deposits.slice(0, 5).map((deposit: Transaction) => (
-                      <div 
-                        key={deposit.id}
-                        className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payins/50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-success/20 flex items-center justify-center">
-                            <ArrowDownToLine className="h-5 w-5 text-success" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">${deposit.amount} {deposit.source_asset}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(deposit.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        <TransactionStatusBadge status={deposit.status} />
-                      </div>
-                    ))}
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-secondary/50 hover:bg-secondary/50">
+                          <TableHead className="w-10"></TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Asset</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead className="text-right">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allTransactions.slice(0, 10).map((tx: Transaction) => {
+                          const isDeposit = tx.transaction_type?.includes('DEPOSIT');
+                          const isWithdraw = tx.transaction_type?.includes('WITHDRAW');
+                          const isConversion = tx.transaction_type === 'CONVERSION';
+                          
+                          return (
+                            <TableRow key={tx.id} className="hover:bg-secondary/30">
+                              <TableCell>
+                                <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                                  isDeposit ? 'bg-success/20' : isWithdraw ? 'bg-warning/20' : 'bg-primary/20'
+                                }`}>
+                                  {isDeposit ? (
+                                    <ArrowDownToLine className="h-4 w-4 text-success" />
+                                  ) : isWithdraw ? (
+                                    <ArrowUpFromLine className="h-4 w-4 text-warning" />
+                                  ) : (
+                                    <RefreshCw className="h-4 w-4 text-primary" />
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium text-foreground">
+                                {tx.transaction_type?.replace(/_/g, ' ') || 'Unknown'}
+                              </TableCell>
+                              <TableCell className="font-mono text-foreground">
+                                {parseFloat(tx.amount || '0').toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {tx.source_asset || tx.destination_asset || '—'}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {new Date(tx.created_at).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <TransactionStatusBadge status={tx.status} />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>
