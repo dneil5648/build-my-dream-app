@@ -505,6 +505,7 @@ const PayoutsDashboard: React.FC = () => {
               accountId={selectedAccount.id} 
               paxosAccountId={selectedAccount.paxos_account_id}
               onSuccess={() => setShowFiatDeposit(false)}
+              initialStep="fund"
             />
           ) : (
             <p className="text-muted-foreground">Select an account first</p>
