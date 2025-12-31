@@ -129,9 +129,9 @@ export const CreateDestinationAddressForm: React.FC<CreateDestinationAddressForm
             <SelectValue placeholder="Select account" />
           </SelectTrigger>
           <SelectContent>
-            {accounts.map((account) => (
+            {accounts.map((account, index) => (
               <SelectItem key={account.id} value={account.id}>
-                {account.description || account.paxos_account_id.slice(0, 12) + '...'}
+                {account.nickname || `Account ${index + 1}`}
               </SelectItem>
             ))}
           </SelectContent>
