@@ -84,8 +84,14 @@ const PayInsDashboard: React.FC = () => {
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
-  const cryptoAddresses = cryptoAddressesResponse?.data || [];
+  const allCryptoAddresses = cryptoAddressesResponse?.data || [];
   const fiatAccounts = fiatAccountsResponse?.data || [];
+  
+  // Filter crypto addresses to match selected account's paxos_account_id
+  const selectedAccountData = accounts.find((acc: PaxosAccount) => acc.id === selectedAccountId);
+  const cryptoAddresses = selectedAccountData 
+    ? allCryptoAddresses.filter((addr: CryptoAddress) => addr.paxos_account_id === selectedAccountData.paxos_account_id)
+    : allCryptoAddresses;
   const destinationAddresses = destinationAddressesResponse?.data || [];
   const selectedAccountBalances = Array.isArray(selectedAccountBalancesResponse?.data?.items) 
     ? selectedAccountBalancesResponse.data.items : [];
