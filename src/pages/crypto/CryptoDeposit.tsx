@@ -116,7 +116,7 @@ const CryptoDeposit: React.FC = () => {
     }
   };
 
-  const selectedWallet = accounts.find(a => a.paxos_account_id === formData.account);
+  const selectedWallet = accounts.find(a => a.id === formData.account);
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -147,7 +147,7 @@ const CryptoDeposit: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.paxos_account_id}>
+                <SelectItem key={account.id} value={account.id}>
                   <div className="flex items-center gap-2">
                     <span>{account.nickname || `Wallet ${account.paxos_account_id.slice(0, 8)}...`}</span>
                   </div>
