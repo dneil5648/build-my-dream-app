@@ -77,8 +77,8 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
   const sourceAsset = instruction.source_asset || 'USD';
   const destinationAsset = instruction.destination_asset || 'USD';
   const isConversion = sourceAsset !== destinationAsset;
-  const isAutoSend = instruction.instruction_type === 'DEPOSIT_CONVERT_SEND';
-  const destinationType = instruction.destination_type;
+  const isAutoSend = instruction.instruction_type === 'DEPOSIT_CONVERT_SEND' || instruction.instruction_type === 'orchestration';
+  const destinationType = instruction.destination_type?.toUpperCase() as 'CRYPTO' | 'FIAT' | 'PROFILE' | undefined;
   const hasDestinationDetails = instruction.destination_address || instruction.destination_crypto_address_id || destinationType;
 
   // Determine what icon/label to show for destination
