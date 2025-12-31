@@ -69,12 +69,24 @@ const PayoutsDashboard: React.FC = () => {
   const selectedAccount = accounts.find((a: PaxosAccount) => a.id === selectedAccountId);
 
   // Get module config and check for institution identity
+  // IMPORTANT: Only use identities created within this module (PAY_OUTS)
   const moduleConfig = getModuleIdentityConfig();
+  
+  // If requireOnboarding is true, always show onboarding regardless of existing identities
+  const forceNewOnboarding = moduleConfig.requireOnboarding;
+  
+  // Find the configured identity for this module (must be from PAY_OUTS module identities)
   const configuredIdentity = moduleConfig.payoutsIdentityId 
     ? identities.find((i: PaxosIdentity) => i.identity_id === moduleConfig.payoutsIdentityId)
     : null;
-  const institutionIdentity = configuredIdentity || identities.find((i: PaxosIdentity) => i.identity_type?.toUpperCase() === 'INSTITUTION');
-  const needsOnboarding = !loadingIdentities && !institutionIdentity && (moduleConfig.requireOnboarding || !moduleConfig.payoutsIdentityId);
+  
+  // Only use identities that were created in this module - don't fall back to other modules
+  const institutionIdentity = forceNewOnboarding ? null : (
+    configuredIdentity || identities.find((i: PaxosIdentity) => i.identity_type?.toUpperCase() === 'INSTITUTION')
+  );
+  
+  // Show onboarding if: forced reset OR no institution identity exists in this module
+  const needsOnboarding = !loadingIdentities && (forceNewOnboarding || !institutionIdentity);
 
   useEffect(() => {
     if (accounts.length > 0 && !selectedAccountId) {
