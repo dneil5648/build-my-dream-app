@@ -3,6 +3,7 @@ import {
   CryptoAddress, 
   CreateCryptoAddressRequest,
   CryptoWithdrawalFeeRequest,
+  CryptoWithdrawalFeeResponse,
   CreateCryptoDestinationAddressRequest,
   CryptoDestinationAddress,
   ListQueryParams,
@@ -47,8 +48,8 @@ export const cryptoService = {
   // ============= Withdrawal Operations =============
 
   // Calculate withdrawal fee
-  calculateWithdrawalFee: async (data: CryptoWithdrawalFeeRequest): Promise<ApiResponse<{ fee: string; asset: string }>> => {
-    return apiClient.post<{ fee: string; asset: string }>('/assets/crypto/withdraw/fee', data);
+  calculateWithdrawalFee: async (data: CryptoWithdrawalFeeRequest): Promise<ApiResponse<CryptoWithdrawalFeeResponse>> => {
+    return apiClient.post<CryptoWithdrawalFeeResponse>('/assets/crypto/withdraw/fee', data);
   },
 
   // Create withdrawal

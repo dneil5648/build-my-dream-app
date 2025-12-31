@@ -436,8 +436,14 @@ export interface CryptoAddress {
 export interface CryptoWithdrawalFeeRequest {
   asset: string;
   amount: string;
-  network: CryptoNetwork;
+  network: string;
   destination_address: string;
+}
+
+export interface CryptoWithdrawalFeeResponse {
+  fee: string;
+  fee_asset: string;
+  estimated_total: string;
 }
 
 // ============= Crypto Destination Address Types =============
@@ -505,7 +511,7 @@ export interface WithdrawAssetRequest {
   source_asset: string;
   destination_asset: string;
   amount: string;
-  network?: CryptoNetwork | FiatNetwork;
+  network?: string;
   destination_address?: string;
   fiat_account_id?: string;
   destination_account_id?: string;
