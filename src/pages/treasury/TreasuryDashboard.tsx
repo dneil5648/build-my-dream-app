@@ -24,6 +24,7 @@ import { ManualConversionForm } from '@/components/shared/ManualConversionForm';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
 import { DepositAddressDetailModal } from '@/components/shared/DepositAddressDetailModal';
 import { FiatDepositInstructionDetailModal } from '@/components/shared/FiatDepositInstructionDetailModal';
+import { AccountDetailModal } from '@/components/shared/AccountDetailModal';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -65,11 +66,16 @@ const TreasuryDashboard: React.FC = () => {
   const [showFiatDeposit, setShowFiatDeposit] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState<CryptoAddress | null>(null);
   const [selectedInstruction, setSelectedInstruction] = useState<FiatDepositInstructions | null>(null);
+  const [detailAccount, setDetailAccount] = useState<PaxosAccount | null>(null);
 
   // Data fetching
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'TREASURY' });
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities({ module: 'TREASURY' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
+  const { data: detailBalancesResponse, isLoading: loadingDetailBalances } = useAccountBalances(detailAccount?.id || '');
+  // Fetch ALL crypto addresses for the table display (no account filter)
+  const { data: allCryptoAddressesResponse, isLoading: loadingAllAddresses } = useCryptoAddresses();
+  // Fetch addresses for selected account (for other uses)
   const { data: cryptoAddressesResponse, isLoading: loadingAddresses } = useCryptoAddresses(
     selectedAccountId ? { account_id: selectedAccountId } : undefined
   );
@@ -97,12 +103,22 @@ const TreasuryDashboard: React.FC = () => {
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
+  const detailBalances = Array.isArray(detailBalancesResponse?.data?.items) ? detailBalancesResponse.data.items : [];
+  const allCryptoAddresses = allCryptoAddressesResponse?.data || [];
   const cryptoAddresses = cryptoAddressesResponse?.data || [];
   const destinations = destinationsResponse?.data || [];
   const fiatAccounts = fiatAccountsResponse?.data || [];
   const depositInstructions = instructionsResponse?.data || [];
   
   const selectedAccount = accounts.find((a: PaxosAccount) => a.id === selectedAccountId);
+  
+  // Find deposit/destination for detail modal
+  const detailDepositAddress = detailAccount 
+    ? allCryptoAddresses.find((addr: CryptoAddress) => addr.paxos_account_id === detailAccount.paxos_account_id)
+    : null;
+  const detailDestinationAddress = detailAccount
+    ? destinations.find((dest) => dest.account_id === detailAccount.id || dest.paxos_account_id === detailAccount.paxos_account_id)
+    : null;
 
   // Module config - institutions only (reuse payouts config for treasury since it's also institutional)
   const moduleConfig = getModuleIdentityConfig();
@@ -711,9 +727,10 @@ const TreasuryDashboard: React.FC = () => {
               <AccountsTable 
                 accounts={accounts} 
                 isLoading={loadingAccounts}
-                depositAddresses={cryptoAddresses}
+                depositAddresses={allCryptoAddresses}
                 destinationAddresses={destinations}
                 showAddressColumns={true}
+                onSelect={(account) => setDetailAccount(account)}
               />
             </CardContent>
           </Card>
@@ -945,6 +962,17 @@ const TreasuryDashboard: React.FC = () => {
         instruction={selectedInstruction}
         isOpen={!!selectedInstruction}
         onClose={() => setSelectedInstruction(null)}
+      />
+
+      <AccountDetailModal
+        account={detailAccount}
+        balances={detailBalances}
+        depositAddress={detailDepositAddress}
+        destinationAddress={detailDestinationAddress}
+        isLoadingBalances={loadingDetailBalances}
+        isOpen={!!detailAccount}
+        onClose={() => setDetailAccount(null)}
+        showDetailsTab={true}
       />
     </div>
   );
