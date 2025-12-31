@@ -106,9 +106,9 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
   );
   const destinations = destinationsResponse?.data || [];
   
-  // Get selected instruction details
+  // Get selected instruction details (using local database id)
   const selectedInstruction = existingInstructions.find(
-    (inst: FiatDepositInstructions) => inst.deposit_instructions_id === selectedInstructionId
+    (inst: FiatDepositInstructions) => inst.id === selectedInstructionId
   );
 
   const handleCopy = (text: string) => {
@@ -583,11 +583,11 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {existingInstructions.map((inst: FiatDepositInstructions) => (
-                    <SelectItem key={inst.deposit_instructions_id} value={inst.deposit_instructions_id}>
+                    <SelectItem key={inst.id} value={inst.id}>
                       <div className="flex flex-col items-start">
                         <span className="font-medium">{inst.network} - {inst.instruction_type}</span>
                         <span className="text-xs text-muted-foreground">
-                          {inst.deposit_instructions_id?.slice(0, 16)}...
+                          {inst.id?.slice(0, 16)}...
                         </span>
                       </div>
                     </SelectItem>
