@@ -52,7 +52,7 @@ const TreasuryTransfers: React.FC = () => {
   // Find deposit address for target account matching asset/network
   const targetDepositAddress = useMemo(() => {
     return targetAddresses.find((addr: CryptoAddress) => 
-      addr.source_asset === asset && addr.crypto_network === network
+      addr.source_asset === asset && addr.network === network
     );
   }, [targetAddresses, asset, network]);
 

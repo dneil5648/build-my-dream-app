@@ -103,11 +103,11 @@ const TreasuryDashboard: React.FC = () => {
   
   const selectedAccount = accounts.find((a: PaxosAccount) => a.id === selectedAccountId);
 
-  // Module config - institutions only
+  // Module config - institutions only (reuse payouts config for treasury since it's also institutional)
   const moduleConfig = getModuleIdentityConfig();
-  const forceNewOnboarding = moduleConfig.treasuryRequireNew;
-  const configuredIdentity = moduleConfig.treasuryIdentityId
-    ? identities.find((i: PaxosIdentity) => i.identity_id === moduleConfig.treasuryIdentityId)
+  const forceNewOnboarding = moduleConfig.payoutsRequireNew;
+  const configuredIdentity = moduleConfig.payoutsIdentityId
+    ? identities.find((i: PaxosIdentity) => i.identity_id === moduleConfig.payoutsIdentityId)
     : null;
   
   // Only allow institutional identities
@@ -198,8 +198,8 @@ const TreasuryDashboard: React.FC = () => {
         const currentConfig = getModuleIdentityConfig();
         saveModuleIdentityConfig({
           ...currentConfig,
-          treasuryIdentityId: createdIdentity.identity_id,
-          treasuryRequireNew: false,
+          payoutsIdentityId: createdIdentity.identity_id,
+          payoutsRequireNew: false,
         });
         toast.success('Institution registered successfully');
         setShowOnboarding(false);
@@ -725,7 +725,7 @@ const TreasuryDashboard: React.FC = () => {
                           </Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {inst.fiat_network_type} • Click for details
+                          {inst.network} • Click for details
                         </p>
                       </div>
                     ))}
@@ -747,10 +747,11 @@ const TreasuryDashboard: React.FC = () => {
               <CardContent>
                 {selectedAccount ? (
                   <ManualWithdrawalForm
-                    accountId={selectedAccount.id}
-                    balances={balances}
-                    destinations={destinations}
+                    accounts={accounts}
+                    destinationAddresses={destinations}
                     fiatAccounts={fiatAccounts}
+                    balances={balances}
+                    selectedAccountId={selectedAccount.id}
                     onSubmit={handleWithdraw}
                     isLoading={withdrawAssets.isPending}
                   />
@@ -799,7 +800,7 @@ const TreasuryDashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <DestinationAddressList 
-                destinations={destinations} 
+                addresses={destinations} 
                 isLoading={loadingDestinations}
               />
             </CardContent>
@@ -855,7 +856,7 @@ const TreasuryDashboard: React.FC = () => {
             <DialogTitle>Register Fiat Account</DialogTitle>
           </DialogHeader>
           <CreateFiatAccountForm
-            identities={institutionIdentities}
+            accounts={accounts}
             onSubmit={handleRegisterFiatAccount}
             isLoading={registerFiatAccount.isPending}
           />
@@ -883,11 +884,13 @@ const TreasuryDashboard: React.FC = () => {
       {/* Detail Modals */}
       <DepositAddressDetailModal
         address={selectedAddress}
+        isOpen={!!selectedAddress}
         onClose={() => setSelectedAddress(null)}
       />
 
       <FiatDepositInstructionDetailModal
         instruction={selectedInstruction}
+        isOpen={!!selectedInstruction}
         onClose={() => setSelectedInstruction(null)}
       />
     </div>
