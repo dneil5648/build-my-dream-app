@@ -15,6 +15,7 @@ import { CreateDestinationAddressForm } from '@/components/shared/CreateDestinat
 import { DestinationAddressList } from '@/components/shared/DestinationAddressList';
 import { AccountDetailModal } from '@/components/shared/AccountDetailModal';
 import { DepositAddressDetailModal } from '@/components/shared/DepositAddressDetailModal';
+import { ManualWithdrawalForm } from '@/components/shared/ManualWithdrawalForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,6 +26,7 @@ import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAc
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
 import { useCryptoAddresses, useCryptoDestinationAddresses, useCreateCryptoDestinationAddress } from '@/hooks/useCrypto';
 import { useFiatAccounts, useRegisterFiatAccount } from '@/hooks/useFiat';
+import { useWithdrawAssets } from '@/hooks/useAssets';
 import { 
   Transaction, 
   CreateIdentityRequest, 
@@ -33,7 +35,8 @@ import {
   PaxosAccount,
   CryptoAddress,
   RegisterFiatAccountRequest,
-  CreateCryptoDestinationAddressRequest
+  CreateCryptoDestinationAddressRequest,
+  WithdrawAssetRequest
 } from '@/api/types';
 import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
@@ -75,6 +78,7 @@ const PayInsDashboard: React.FC = () => {
   const createAccount = useCreateAccount();
   const registerFiatAccount = useRegisterFiatAccount();
   const createDestinationAddress = useCreateCryptoDestinationAddress();
+  const withdrawAssets = useWithdrawAssets();
 
   // Derived data - filter for deposit transactions
   // Filter for deposit transactions
@@ -174,6 +178,15 @@ const PayInsDashboard: React.FC = () => {
     }
   };
 
+  const handleWithdraw = async (data: WithdrawAssetRequest) => {
+    try {
+      await withdrawAssets.mutateAsync(data);
+      toast.success('Withdrawal initiated successfully');
+    } catch (error) {
+      toast.error('Failed to process withdrawal');
+    }
+  };
+
   const handleAccountSelect = (account: PaxosAccount) => {
     setSelectedAccount(account);
   };
@@ -261,6 +274,9 @@ const PayInsDashboard: React.FC = () => {
         <TabsList className="bg-secondary/50 p-1">
           <TabsTrigger value="overview" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
             Overview
+          </TabsTrigger>
+          <TabsTrigger value="withdrawals" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
+            Withdrawals
           </TabsTrigger>
           <TabsTrigger value="accounts" className="data-[state=active]:bg-module-payins data-[state=active]:text-white">
             Accounts
@@ -445,6 +461,78 @@ const PayInsDashboard: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Withdrawals Tab */}
+        <TabsContent value="withdrawals" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <div className="glass rounded-xl p-6">
+                <div className="mb-6">
+                  <h3 className="font-semibold text-foreground">Manual Withdrawal</h3>
+                  <p className="text-sm text-muted-foreground">Withdraw assets to registered destinations</p>
+                </div>
+                
+                {!selectedAccountId ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Select an account to make withdrawals</p>
+                  </div>
+                ) : (
+                  <ManualWithdrawalForm
+                    accounts={accounts}
+                    destinationAddresses={destinationAddresses}
+                    fiatAccounts={fiatAccounts}
+                    balances={balances}
+                    selectedAccountId={selectedAccountId}
+                    onSubmit={handleWithdraw}
+                    isLoading={withdrawAssets.isPending}
+                  />
+                )}
+              </div>
+            </div>
+            
+            {/* Sidebar */}
+            <div className="space-y-6">
+              <div className="glass rounded-xl p-6">
+                <h3 className="font-semibold text-foreground mb-4">Available Balance</h3>
+                {accounts.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-sm">No accounts available</p>
+                  </div>
+                ) : (
+                  <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
+                )}
+              </div>
+              
+              <div className="glass rounded-xl p-6">
+                <h3 className="font-semibold text-foreground mb-4">Quick Info</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-2">
+                    <ArrowUpFromLine className="h-4 w-4 text-module-payins mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Crypto Withdrawals</p>
+                      <p className="text-muted-foreground">Send to registered destination addresses</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Building2 className="h-4 w-4 text-module-payins mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Fiat Withdrawals</p>
+                      <p className="text-muted-foreground">Send to registered bank accounts</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <RefreshCw className="h-4 w-4 text-module-payins mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Auto Conversion</p>
+                      <p className="text-muted-foreground">Convert assets during withdrawal</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </TabsContent>
