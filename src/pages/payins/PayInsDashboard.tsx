@@ -314,11 +314,11 @@ const PayInsDashboard: React.FC = () => {
               {/* Stats Grid */}
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard
-                  title="Total Deposits"
-                  value={loadingTransactions ? '...' : `$${completedDeposits.reduce((sum: number, t: Transaction) => sum + parseFloat(t.amount || '0'), 0).toLocaleString()}`}
-                  change={`${completedDeposits.length} completed`}
+                  title="Total Balance"
+                  value={loadingBalances ? '...' : `$${balances.reduce((sum: number, b: { available: string }) => sum + parseFloat(b.available || '0'), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  change={`${balances.length} asset${balances.length !== 1 ? 's' : ''}`}
                   changeType="positive"
-                  icon={ArrowDownToLine}
+                  icon={Wallet}
                 />
                 <StatCard
                   title="Pending"
