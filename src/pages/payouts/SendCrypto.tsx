@@ -30,7 +30,9 @@ const SendCrypto: React.FC = () => {
 
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'PAY_OUTS' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(formData.sourceAccount);
-  const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses();
+  const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses(
+    formData.sourceAccount ? { account_id: formData.sourceAccount } : undefined
+  );
   
   const withdrawAssets = useWithdrawAssets();
   const convertAssets = useConvertAssets();
