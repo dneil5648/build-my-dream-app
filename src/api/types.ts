@@ -403,7 +403,7 @@ export interface CreateSandboxDepositRequest {
 
 // ============= Crypto Types =============
 
-export type CryptoNetwork = 'ETHEREUM' | 'SOLANA' | 'STELLAR' | 'BASE' | 'POLYGON';
+export type CryptoNetwork = 'BITCOIN' | 'ETHEREUM' | 'POLYGON' | 'SOLANA' | 'LITECOIN' | 'STELLAR' | 'BASE';
 
 export interface CreateCryptoAddressRequest {
   account_id: string;
@@ -440,11 +440,38 @@ export interface CryptoWithdrawalFeeRequest {
 
 // ============= Crypto Destination Address Types =============
 
+// Travel Rule Types
+export interface BeneficiaryPerson {
+  first_name: string;
+  last_name: string;
+}
+
+export interface BeneficiaryInstitution {
+  name: string;
+}
+
+export interface Beneficiary {
+  person_details?: BeneficiaryPerson;
+  institution_details?: BeneficiaryInstitution;
+}
+
+export interface CryptoDestinationVasp {
+  id?: string;
+}
+
+export interface TravelRuleMetadata {
+  beneficiary?: Beneficiary;
+  vasp?: CryptoDestinationVasp;
+  custodian_type?: 'VASP' | 'PRIVATE';
+}
+
 export interface CreateCryptoDestinationAddressRequest {
   account_id: string;
   crypto_network: CryptoNetwork;
   address: string;
-  label?: string;
+  nickname?: string;
+  bookmarked_status?: boolean;
+  travelrule_metadata?: TravelRuleMetadata;
 }
 
 export interface CryptoDestinationAddress {
@@ -454,7 +481,7 @@ export interface CryptoDestinationAddress {
   paxos_account_id: string;
   crypto_network: string;
   address: string;
-  label?: string;
+  nickname?: string;
   status: string;
   user_id: string;
   created_at: string;

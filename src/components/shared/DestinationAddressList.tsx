@@ -99,8 +99,8 @@ export const DestinationAddressList: React.FC<DestinationAddressListProps> = ({
                       {addr.status}
                     </span>
                   </div>
-                  {addr.label && (
-                    <p className="font-medium text-foreground">{addr.label}</p>
+                  {addr.nickname && (
+                    <p className="font-medium text-foreground">{addr.nickname}</p>
                   )}
                   <p className="text-sm text-muted-foreground font-mono truncate max-w-[300px]">
                     {addr.address}
