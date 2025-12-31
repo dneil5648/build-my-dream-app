@@ -129,7 +129,7 @@ const CryptoWithdraw: React.FC = () => {
     try {
       const result = await calculateFee.mutateAsync({
         asset: formData.asset,
-        network: formData.network,
+        crypto_network: formData.network,
         amount: formData.amount,
         destination_address: formData.destination,
       });
