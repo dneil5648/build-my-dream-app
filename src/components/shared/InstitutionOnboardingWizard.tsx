@@ -85,6 +85,20 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
   const [bizSourceOfFunds, setBizSourceOfFunds] = useState('');
   const [bizSourceOfWealth, setBizSourceOfWealth] = useState('');
 
+  // Conditional Regulator Fields (required when regulated)
+  const [regulatorName, setRegulatorName] = useState('');
+  const [regulatorJurisdiction, setRegulatorJurisdiction] = useState('');
+  const [regulatorRegisterNumber, setRegulatorRegisterNumber] = useState('');
+
+  // Optional Public Company Fields
+  const [listedExchange, setListedExchange] = useState('');
+  const [tickerSymbol, setTickerSymbol] = useState('');
+  const [parentInstitutionName, setParentInstitutionName] = useState('');
+
+  // Derived state for conditional logic
+  const isRegulated = bizRegulationStatus !== 'NON_REGULATED';
+  const isPubliclyTraded = bizTradingType === 'PUBLIC' || bizTradingType === 'PUBLICLY_TRADED_SUBSIDIARY';
+
   // Representative Member Details
   const [repRoles, setRepRoles] = useState<string[]>(['BENEFICIAL_OWNER']);
   const [repPosition, setRepPosition] = useState('');
@@ -189,25 +203,43 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
     }
 
     // Step 2: Create institution identity with the person as a member
+    const institutionDetails: any = {
+      name: bizName,
+      doing_business_as: bizDBA || undefined,
+      business_description: bizDescription || undefined,
+      email: bizEmail,
+      phone_number: bizPhone,
+      institution_type: bizType as any,
+      institution_sub_type: bizSubType,
+      cip_id: bizCipId,
+      cip_id_type: 'EIN',
+      cip_id_country: 'USA',
+      govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : '',
+      business_address: bizAddress,
+      incorporation_address: bizAddress, // Required by API
+      regulation_status: bizRegulationStatus as any,
+      trading_type: bizTradingType as any,
+    };
+
+    // Add regulator fields when regulated
+    if (isRegulated) {
+      institutionDetails.regulator_name = regulatorName;
+      institutionDetails.regulator_jurisdiction = regulatorJurisdiction;
+      institutionDetails.regulator_register_number = regulatorRegisterNumber;
+    }
+
+    // Add optional public company fields when applicable
+    if (isPubliclyTraded) {
+      if (listedExchange) institutionDetails.listed_exchange = listedExchange;
+      if (tickerSymbol) institutionDetails.ticker_symbol = tickerSymbol;
+    }
+    if (bizTradingType === 'PUBLICLY_TRADED_SUBSIDIARY' && parentInstitutionName) {
+      institutionDetails.parent_institution_name = parentInstitutionName;
+    }
+
     const institutionData: CreateIdentityRequest = {
       identity_request: {
-        institution_details: {
-          name: bizName,
-          doing_business_as: bizDBA || undefined,
-          business_description: bizDescription || undefined,
-          email: bizEmail,
-          phone_number: bizPhone,
-          institution_type: bizType as any,
-          institution_sub_type: bizSubType,
-          cip_id: bizCipId,
-          cip_id_type: 'EIN',
-          cip_id_country: 'USA',
-          govt_registration_date: bizGovtRegDate ? `${bizGovtRegDate}T00:00:00Z` : '',
-          business_address: bizAddress,
-          incorporation_address: bizAddress, // Required by API
-          regulation_status: bizRegulationStatus as any,
-          trading_type: bizTradingType as any,
-        },
+        institution_details: institutionDetails,
         institution_members: [{
           identity_id: personIdentityId,
           roles: repRoles as MemberRole[],
@@ -250,7 +282,12 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
         return !!(bizAddress.address1 && bizAddress.city && bizAddress.province && bizAddress.zip_code && bizAddress.country);
       case 'biz-details':
         // Industry sector and CDD required for institutions
-        return !!((bizIndustrySector || bizSubType) && bizPurpose && bizSourceOfFunds && bizSourceOfWealth && repRoles.length > 0);
+        // Regulator fields required when regulated
+        const baseDetailsValid = !!((bizIndustrySector || bizSubType) && bizPurpose && bizSourceOfFunds && bizSourceOfWealth && repRoles.length > 0);
+        if (isRegulated) {
+          return baseDetailsValid && !!(regulatorName && regulatorJurisdiction && regulatorRegisterNumber);
+        }
+        return baseDetailsValid;
       case 'review':
         return true;
       default:
@@ -818,6 +855,98 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
               </div>
             </div>
 
+            {/* Conditional Regulator Fields - Required when regulated */}
+            {isRegulated && (
+              <div className="pt-4 border-t border-border">
+                <div className="flex items-center gap-2 mb-4">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-foreground">Regulatory Information *</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Required for US or internationally regulated entities
+                </p>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Regulator Name *</Label>
+                    <Input
+                      value={regulatorName}
+                      onChange={(e) => setRegulatorName(e.target.value)}
+                      placeholder="e.g., SEC, FINRA, FCA, BaFin"
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Regulator Jurisdiction *</Label>
+                      <Input
+                        value={regulatorJurisdiction}
+                        onChange={(e) => setRegulatorJurisdiction(e.target.value)}
+                        placeholder="e.g., USA, UK, EU"
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Registration Number *</Label>
+                      <Input
+                        value={regulatorRegisterNumber}
+                        onChange={(e) => setRegulatorRegisterNumber(e.target.value)}
+                        placeholder="e.g., 801-12345"
+                        className="bg-secondary border-border"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Optional Public Company Fields */}
+            {isPubliclyTraded && (
+              <div className="pt-4 border-t border-border">
+                <div className="flex items-center gap-2 mb-4">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-foreground">Public Company Details</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Optional details for publicly traded companies
+                </p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Listed Exchange</Label>
+                    <Input
+                      value={listedExchange}
+                      onChange={(e) => setListedExchange(e.target.value)}
+                      placeholder="e.g., NYSE, NASDAQ, LSE"
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ticker Symbol</Label>
+                    <Input
+                      value={tickerSymbol}
+                      onChange={(e) => setTickerSymbol(e.target.value.toUpperCase())}
+                      placeholder="e.g., AAPL"
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                </div>
+
+                {bizTradingType === 'PUBLICLY_TRADED_SUBSIDIARY' && (
+                  <div className="space-y-2 mt-4">
+                    <Label>Parent Institution Name</Label>
+                    <Input
+                      value={parentInstitutionName}
+                      onChange={(e) => setParentInstitutionName(e.target.value)}
+                      placeholder="Name of parent company"
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="pt-4 border-t border-border">
               <div className="flex items-center gap-2 mb-4">
                 <FileText className="h-4 w-4 text-primary" />
@@ -973,10 +1102,62 @@ export const InstitutionOnboardingWizard: React.FC<InstitutionOnboardingWizardPr
                   <span className="text-foreground">{INSTITUTION_TYPES.find(t => t.value === bizType)?.label}</span>
                   <span className="text-muted-foreground">Sub-Type:</span>
                   <span className="text-foreground">{INSTITUTION_SUB_TYPES.find(s => s.value === bizSubType)?.label}</span>
+                  <span className="text-muted-foreground">Regulation:</span>
+                  <span className="text-foreground">{REGULATION_STATUSES.find(r => r.value === bizRegulationStatus)?.label}</span>
+                  <span className="text-muted-foreground">Trading Type:</span>
+                  <span className="text-foreground">{TRADING_TYPES.find(t => t.value === bizTradingType)?.label}</span>
                   <span className="text-muted-foreground">Purpose:</span>
                   <span className="text-foreground">{ACCOUNT_PURPOSES.find(p => p.value === bizPurpose)?.label}</span>
                 </div>
               </div>
+
+              {/* Show regulator details if regulated */}
+              {isRegulated && (
+                <div className="rounded-lg border border-border p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shield className="h-4 w-4 text-primary" />
+                    <h4 className="font-medium text-foreground">Regulatory Details</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-muted-foreground">Regulator:</span>
+                    <span className="text-foreground">{regulatorName}</span>
+                    <span className="text-muted-foreground">Jurisdiction:</span>
+                    <span className="text-foreground">{regulatorJurisdiction}</span>
+                    <span className="text-muted-foreground">Registration #:</span>
+                    <span className="text-foreground">{regulatorRegisterNumber}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Show public company details if applicable */}
+              {isPubliclyTraded && (listedExchange || tickerSymbol || parentInstitutionName) && (
+                <div className="rounded-lg border border-border p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <h4 className="font-medium text-foreground">Public Company Details</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {listedExchange && (
+                      <>
+                        <span className="text-muted-foreground">Exchange:</span>
+                        <span className="text-foreground">{listedExchange}</span>
+                      </>
+                    )}
+                    {tickerSymbol && (
+                      <>
+                        <span className="text-muted-foreground">Ticker:</span>
+                        <span className="text-foreground">{tickerSymbol}</span>
+                      </>
+                    )}
+                    {parentInstitutionName && (
+                      <>
+                        <span className="text-muted-foreground">Parent Company:</span>
+                        <span className="text-foreground">{parentInstitutionName}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="bg-warning/10 border border-warning/30 rounded-lg p-3">
                 <p className="text-sm text-muted-foreground">
