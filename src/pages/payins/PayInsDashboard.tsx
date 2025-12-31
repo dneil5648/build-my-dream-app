@@ -580,6 +580,8 @@ const PayInsDashboard: React.FC = () => {
         address={selectedAddress}
         isOpen={!!selectedAddress}
         onClose={() => setSelectedAddress(null)}
+        destinationAddresses={destinationAddresses}
+        fiatAccounts={fiatAccounts}
       />
     </div>
   );
