@@ -47,8 +47,8 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
         <TableHeader>
           <TableRow className="bg-secondary/50 hover:bg-secondary/50">
             <TableHead className="w-12"></TableHead>
+            <TableHead>Nickname</TableHead>
             <TableHead>Account ID</TableHead>
-            <TableHead>Identity ID</TableHead>
             <TableHead>Description</TableHead>
             <TableHead>Profile</TableHead>
             <TableHead className="text-right">Created</TableHead>
@@ -70,11 +70,11 @@ export const AccountsTable: React.FC<AccountsTableProps> = ({
                   <Wallet className="h-4 w-4 text-primary" />
                 </div>
               </TableCell>
-              <TableCell className="font-mono text-sm text-foreground">
-                {account.paxos_account_id?.slice(0, 16)}...
+              <TableCell className="font-medium text-foreground">
+                {account.nickname || '—'}
               </TableCell>
               <TableCell className="font-mono text-sm text-muted-foreground">
-                {account.paxos_identity_id?.slice(0, 12)}...
+                {account.paxos_account_id?.slice(0, 16)}...
               </TableCell>
               <TableCell className="text-muted-foreground">
                 {account.description || '—'}
