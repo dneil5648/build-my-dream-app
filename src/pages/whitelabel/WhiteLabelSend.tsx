@@ -330,9 +330,9 @@ const WhiteLabelSend: React.FC = () => {
               <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select wallet'} />
             </SelectTrigger>
             <SelectContent>
-              {accounts.map((account) => (
+              {accounts.map((account, index) => (
                 <SelectItem key={account.id} value={account.id}>
-                  {account.nickname || `Wallet ${account.paxos_account_id.slice(0, 8)}...`}
+                  {account.nickname || `Wallet ${index + 1}`}
                 </SelectItem>
               ))}
               {accounts.length === 0 && !loadingAccounts && (
