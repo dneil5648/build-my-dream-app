@@ -164,10 +164,10 @@ const WhiteLabelReceive: React.FC = () => {
               <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select wallet'} />
             </SelectTrigger>
             <SelectContent>
-              {accounts.map((account) => (
+              {accounts.map((account, index) => (
                 <SelectItem key={account.id} value={account.id}>
                   <div className="flex items-center gap-2">
-                    <span>{account.nickname || `Wallet ${account.paxos_account_id.slice(0, 8)}...`}</span>
+                    <span>{account.nickname || `Wallet ${index + 1}`}</span>
                   </div>
                 </SelectItem>
               ))}

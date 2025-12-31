@@ -39,10 +39,10 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
               {isLoading 
                 ? 'Loading...' 
                 : selectedAccount 
-                  ? selectedAccount.nickname || `Account ${selectedAccount.paxos_account_id.slice(0, 8)}...`
+                  ? selectedAccount.nickname || `Wallet ${accounts.findIndex(a => a.id === selectedAccountId) + 1}`
                   : accounts.length > 0 
-                    ? 'Select Account' 
-                    : 'No Accounts'}
+                    ? 'Select Wallet' 
+                    : 'No Wallets'}
             </span>
           </div>
           <ChevronDown className="h-4 w-4 opacity-50" />
@@ -54,7 +54,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
             No accounts found
           </div>
         ) : (
-          accounts.map((account) => (
+          accounts.map((account, index) => (
             <DropdownMenuItem
               key={account.id}
               onClick={() => onSelectAccount(account.id)}
@@ -68,10 +68,10 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">
-                    {account.nickname || `${account.paxos_account_id.slice(0, 8)}...`}
+                    {account.nickname || `Wallet ${index + 1}`}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {account.nickname ? account.paxos_account_id.slice(0, 8) : new Date(account.created_at).toLocaleDateString()}
+                    {new Date(account.created_at).toLocaleDateString()}
                   </span>
                 </div>
               </div>
