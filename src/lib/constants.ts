@@ -201,3 +201,30 @@ export const EXPECTED_TRANSFER_VALUES = [
   { value: 'TRANSFER_VALUE_2_5M_TO_5M', label: '$2.5M - $5M' },
   { value: 'TRANSFER_VALUE_ABOVE_5M', label: 'Above $5M' },
 ] as const;
+
+// Crypto networks for deposit addresses
+export const CRYPTO_NETWORKS = [
+  { value: 'ETHEREUM', label: 'Ethereum' },
+  { value: 'SOLANA', label: 'Solana' },
+  { value: 'POLYGON', label: 'Polygon' },
+  { value: 'BASE', label: 'Base' },
+  { value: 'STELLAR', label: 'Stellar' },
+  { value: 'BITCOIN', label: 'Bitcoin' },
+  { value: 'LITECOIN', label: 'Litecoin' },
+  { value: 'ARBITRUM', label: 'Arbitrum' },
+  { value: 'OPTIMISM', label: 'Optimism' },
+  { value: 'AVALANCHE', label: 'Avalanche' },
+  { value: 'TRON', label: 'Tron' },
+  { value: 'BNB', label: 'BNB Chain' },
+] as const;
+
+// Stablecoin assets for Treasury
+export const TREASURY_ASSETS = [
+  { value: 'USDC', label: 'USDC' },
+  { value: 'USDT', label: 'USDT' },
+  { value: 'USDP', label: 'USDP' },
+  { value: 'PYUSD', label: 'PYUSD' },
+  { value: 'USDG', label: 'USDG' },
+  { value: 'DAI', label: 'DAI' },
+  { value: 'BUSD', label: 'BUSD' },
+] as const;

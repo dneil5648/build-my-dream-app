@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { Building2, Loader2 } from 'lucide-react';
+import { Building2, Loader2, Network, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PaxosIdentity, CreateAccountRequest, ModuleName } from '@/api/types';
+import { PaxosIdentity, CreateAccountRequest, ModuleName, CryptoNetwork } from '@/api/types';
+import { CRYPTO_NETWORKS, TREASURY_ASSETS } from '@/lib/constants';
 
 interface CreateAccountFormProps {
   identities: PaxosIdentity[];
-  onSubmit: (data: CreateAccountRequest) => Promise<void>;
+  onSubmit: (data: CreateAccountRequest & { depositConfig?: { network: CryptoNetwork; asset: string } }) => Promise<void>;
   isLoading?: boolean;
   module?: ModuleName;
+  showDepositConfig?: boolean;
 }
 
 export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
@@ -19,17 +21,20 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
   onSubmit,
   isLoading,
   module = 'TREASURY',
+  showDepositConfig = false,
 }) => {
   const [identityId, setIdentityId] = useState('');
   const [nickname, setNickname] = useState('');
   const [description, setDescription] = useState('');
+  const [network, setNetwork] = useState<CryptoNetwork>('ETHEREUM');
+  const [asset, setAsset] = useState('USDC');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!identityId) return;
 
-    await onSubmit({
+    const payload: CreateAccountRequest & { depositConfig?: { network: CryptoNetwork; asset: string } } = {
       account_request: {
         account: {
           identity_id: identityId,
@@ -38,7 +43,13 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
       },
       module,
       nickname: nickname || undefined,
-    });
+    };
+
+    if (showDepositConfig) {
+      payload.depositConfig = { network, asset };
+    }
+
+    await onSubmit(payload);
   };
 
   return (
@@ -56,7 +67,7 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
             <SelectTrigger className="bg-secondary border-border">
               <SelectValue placeholder="Select an identity" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-popover border-border z-50">
               {identities.map((identity) => (
                 <SelectItem key={identity.id} value={identity.identity_id}>
                   <div className="flex items-center gap-2">
@@ -98,6 +109,56 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
           A brief description to help identify this account
         </p>
       </div>
+
+      {/* Deposit Address Configuration - Only shown for Treasury */}
+      {showDepositConfig && (
+        <div className="space-y-4 pt-4 border-t border-border">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Network className="h-4 w-4 text-primary" />
+            <span>Deposit Address Configuration</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            A deposit address will be automatically created for this account
+          </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Network *</Label>
+              <Select value={network} onValueChange={(v) => setNetwork(v as CryptoNetwork)}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select network" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border z-50">
+                  {CRYPTO_NETWORKS.map((n) => (
+                    <SelectItem key={n.value} value={n.value}>
+                      {n.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Asset *</Label>
+              <Select value={asset} onValueChange={setAsset}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select asset" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border z-50">
+                  {TREASURY_ASSETS.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>
+                      <div className="flex items-center gap-2">
+                        <Coins className="h-3 w-3" />
+                        {a.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Button 
         type="submit" 

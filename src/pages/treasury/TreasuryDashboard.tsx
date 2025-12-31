@@ -41,7 +41,7 @@ import { useWithdrawAssets, useConvertAssets } from '@/hooks/useAssets';
 import { 
   CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, PaxosAccount, Transaction,
   CryptoAddress, CreateCryptoDestinationAddressRequest, RegisterFiatAccountRequest,
-  FiatDepositInstructions, WithdrawAssetRequest, ConvertAssetRequest, CreateCryptoAddressRequest
+  FiatDepositInstructions, WithdrawAssetRequest, ConvertAssetRequest, CreateCryptoAddressRequest, CryptoNetwork
 } from '@/api/types';
 import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
@@ -212,10 +212,12 @@ const TreasuryDashboard: React.FC = () => {
     }
   };
 
-  const handleCreateAccount = async (data: CreateAccountRequest) => {
+  const handleCreateAccount = async (data: CreateAccountRequest & { depositConfig?: { network: CryptoNetwork; asset: string } }) => {
     try {
+      const { depositConfig, ...accountData } = data;
+      
       // Step 1: Create the account
-      const accountResult = await createAccount.mutateAsync(data);
+      const accountResult = await createAccount.mutateAsync(accountData);
       const createdAccount = accountResult?.data as PaxosAccount;
       
       if (!createdAccount?.id) {
@@ -224,12 +226,15 @@ const TreasuryDashboard: React.FC = () => {
       
       toast.success('Account created successfully');
       
-      // Step 2: Create a deposit address with no conversion (USDC on Ethereum as default)
+      // Step 2: Create a deposit address with no conversion using selected network/asset
+      const selectedNetwork = depositConfig?.network || 'ETHEREUM';
+      const selectedAsset = depositConfig?.asset || 'USDC';
+      
       const depositAddressPayload: CreateCryptoAddressRequest = {
         account_id: createdAccount.id,
-        network: 'ETHEREUM',
-        source_asset: 'USDC',
-        destination_asset: 'USDC', // Same asset = no conversion
+        network: selectedNetwork,
+        source_asset: selectedAsset,
+        destination_asset: selectedAsset, // Same asset = no conversion
       };
       
       const depositAddressResult = await cryptoService.createCryptoAddress(depositAddressPayload);
@@ -241,14 +246,14 @@ const TreasuryDashboard: React.FC = () => {
         return;
       }
       
-      toast.success('Deposit address generated');
+      toast.success(`${selectedAsset} deposit address on ${selectedNetwork} generated`);
       
       // Step 3: Create a destination crypto address from the deposit address
       const destinationPayload: CreateCryptoDestinationAddressRequest = {
         account_id: createdAccount.id,
-        crypto_network: 'ETHEREUM',
+        crypto_network: selectedNetwork,
         address: createdDepositAddress.wallet_address,
-        nickname: `${data.nickname || 'Treasury Account'} - Deposit`,
+        nickname: `${accountData.nickname || 'Treasury Account'} - ${selectedAsset} (${selectedNetwork})`,
         bookmarked_status: true,
       };
       
@@ -872,8 +877,9 @@ const TreasuryDashboard: React.FC = () => {
           <CreateAccountForm
             identities={institutionIdentities}
             onSubmit={handleCreateAccount}
-            isLoading={createAccount.isPending}
+            isLoading={createAccount.isPending || createDestinationAddress.isPending}
             module="TREASURY"
+            showDepositConfig={true}
           />
         </DialogContent>
       </Dialog>
