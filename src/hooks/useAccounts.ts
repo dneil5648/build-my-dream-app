@@ -31,6 +31,7 @@ export const useAccountBalances = (id: string) => {
     queryKey: accountKeys.balances(id),
     queryFn: () => accountService.getAccountBalances(id),
     enabled: !!id,
+    refetchInterval: 10000, // Poll every 10 seconds for faster balance updates
   });
 };
 
