@@ -124,7 +124,12 @@ export interface ModuleIdentityConfig {
   payoutsIdentityId: string | null;
   cryptoWalletIdentityId: string | null; // For Crypto Wallet module
   whiteLabelIdentityId: string | null; // For White Label Wallet module
-  requireOnboarding: boolean; // if true, forces new identity creation
+  // Per-module require new registration flags
+  payinsRequireNew: boolean;
+  payoutsRequireNew: boolean;
+  cryptoWalletRequireNew: boolean;
+  whiteLabelRequireNew: boolean;
+  requireOnboarding: boolean; // DEPRECATED - kept for backwards compat
   idvVendor: string | null; // IDV vendor selection
 }
 
@@ -161,7 +166,19 @@ export const saveWhiteLabelConfig = (config: WhiteLabelConfig): void => {
 
 export const getModuleIdentityConfig = (): ModuleIdentityConfig => {
   const saved = localStorage.getItem('moduleIdentityConfig');
-  return saved ? JSON.parse(saved) : { payinsIdentityId: null, payoutsIdentityId: null, cryptoWalletIdentityId: null, whiteLabelIdentityId: null, requireOnboarding: false, idvVendor: null };
+  const defaults: ModuleIdentityConfig = { 
+    payinsIdentityId: null, 
+    payoutsIdentityId: null, 
+    cryptoWalletIdentityId: null, 
+    whiteLabelIdentityId: null, 
+    payinsRequireNew: false,
+    payoutsRequireNew: false,
+    cryptoWalletRequireNew: false,
+    whiteLabelRequireNew: false,
+    requireOnboarding: false, 
+    idvVendor: null 
+  };
+  return saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
 };
 
 export const saveModuleIdentityConfig = (config: ModuleIdentityConfig): void => {
@@ -199,6 +216,10 @@ const ConfigPage: React.FC = () => {
     payoutsIdentityId: null,
     cryptoWalletIdentityId: null,
     whiteLabelIdentityId: null,
+    payinsRequireNew: false,
+    payoutsRequireNew: false,
+    cryptoWalletRequireNew: false,
+    whiteLabelRequireNew: false,
     requireOnboarding: false,
     idvVendor: null,
   });
@@ -206,6 +227,11 @@ const ConfigPage: React.FC = () => {
   // API hooks
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities();
+  // Fetch module-specific identities
+  const { data: payinsIdentitiesResponse } = useIdentities({ module: 'PAY_INS' });
+  const { data: payoutsIdentitiesResponse } = useIdentities({ module: 'PAY_OUTS' });
+  const { data: cryptoWalletIdentitiesResponse } = useIdentities({ module: 'CRYPTO_WALLET' });
+  const { data: whiteLabelIdentitiesResponse } = useIdentities({ module: 'WHITE_LABEL' });
   const createIdentityMutation = useCreateIdentity();
   const createAccountMutation = useCreateAccount();
 
@@ -214,6 +240,16 @@ const ConfigPage: React.FC = () => {
   const institutionIdentities = identities.filter(i => i.identity_type?.toUpperCase() === 'INSTITUTION');
   const personIdentities = identities.filter(i => i.identity_type?.toUpperCase() === 'INDIVIDUAL');
   const allValidIdentities = identities.filter(i => i.identity_id && i.identity_id.trim() !== '');
+  
+  // Module-specific identities
+  const payinsIdentities = (payinsIdentitiesResponse?.data || []).filter(i => i.identity_id && i.identity_id.trim() !== '');
+  const payoutsIdentities = (payoutsIdentitiesResponse?.data || []).filter(i => i.identity_id && i.identity_id.trim() !== '');
+  const cryptoWalletIdentities = (cryptoWalletIdentitiesResponse?.data || []).filter(i => i.identity_id && i.identity_id.trim() !== '');
+  const whiteLabelIdentities = (whiteLabelIdentitiesResponse?.data || []).filter(i => i.identity_id && i.identity_id.trim() !== '');
+  
+  // Filter by institution type for Pay-ins/Pay-outs
+  const payinsInstitutionIdentities = payinsIdentities.filter(i => i.identity_type?.toUpperCase() === 'INSTITUTION');
+  const payoutsInstitutionIdentities = payoutsIdentities.filter(i => i.identity_type?.toUpperCase() === 'INSTITUTION');
 
   // Load saved configs on mount
   useEffect(() => {
@@ -554,43 +590,65 @@ const ConfigPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Default Institution Identity</Label>
-                <Select 
-                  value={moduleIdentityConfig.payinsIdentityId || 'force-new'} 
-                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+              {/* Require New Registration Toggle */}
+              <label className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border cursor-pointer hover:border-module-payins/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={moduleIdentityConfig.payinsRequireNew}
+                  onChange={(e) => setModuleIdentityConfig(prev => ({ 
                     ...prev, 
-                    payinsIdentityId: value === 'force-new' ? null : value 
+                    payinsRequireNew: e.target.checked,
+                    payinsIdentityId: e.target.checked ? null : prev.payinsIdentityId
                   }))}
-                >
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Select identity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="force-new">
-                      <span className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Require new registration
-                      </span>
-                    </SelectItem>
-                    {institutionIdentities
-                      .filter((identity) => identity.identity_id && identity.identity_id.trim() !== '')
-                      .map((identity) => (
-                        <SelectItem key={identity.identity_id} value={identity.identity_id}>
-                          <span className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {identity.name}
-                          </span>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {moduleIdentityConfig.payinsIdentityId 
-                    ? 'Users will use this identity by default' 
-                    : 'Users must complete business registration to use Pay-ins'}
-                </p>
-              </div>
+                  className="w-4 h-4 rounded border-border accent-module-payins"
+                />
+                <div>
+                  <p className="font-medium text-foreground">Require new registration</p>
+                  <p className="text-sm text-muted-foreground">Force users to create a new identity for this module</p>
+                </div>
+              </label>
+
+              {/* Identity Selection - only show if not requiring new */}
+              {!moduleIdentityConfig.payinsRequireNew && (
+                <div className="space-y-2">
+                  <Label>Use Existing Identity (from Pay-ins module)</Label>
+                  <Select 
+                    value={moduleIdentityConfig.payinsIdentityId || 'none'} 
+                    onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                      ...prev, 
+                      payinsIdentityId: value === 'none' ? null : value 
+                    }))}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select identity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        <span className="text-muted-foreground">No identity selected (show onboarding)</span>
+                      </SelectItem>
+                      {payinsInstitutionIdentities.length > 0 ? (
+                        payinsInstitutionIdentities.map((identity) => (
+                          <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                            <span className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              {identity.name}
+                            </span>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                          No identities in Pay-ins module yet
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {moduleIdentityConfig.payinsIdentityId 
+                      ? 'Users will use this identity by default' 
+                      : 'Users must complete business registration to use Pay-ins'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -602,48 +660,70 @@ const ConfigPage: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">Pay-outs Module</h3>
-                <p className="text-sm text-muted-foreground">Configure identity settings for fiat withdrawals</p>
+                <p className="text-sm text-muted-foreground">Configure identity settings for stablecoin payouts</p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Default Institution Identity</Label>
-                <Select 
-                  value={moduleIdentityConfig.payoutsIdentityId || 'force-new'} 
-                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+              {/* Require New Registration Toggle */}
+              <label className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border cursor-pointer hover:border-module-payouts/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={moduleIdentityConfig.payoutsRequireNew}
+                  onChange={(e) => setModuleIdentityConfig(prev => ({ 
                     ...prev, 
-                    payoutsIdentityId: value === 'force-new' ? null : value 
+                    payoutsRequireNew: e.target.checked,
+                    payoutsIdentityId: e.target.checked ? null : prev.payoutsIdentityId
                   }))}
-                >
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Select identity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="force-new">
-                      <span className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Require new registration
-                      </span>
-                    </SelectItem>
-                    {institutionIdentities
-                      .filter((identity) => identity.identity_id && identity.identity_id.trim() !== '')
-                      .map((identity) => (
-                        <SelectItem key={identity.identity_id} value={identity.identity_id}>
-                          <span className="flex items-center gap-2">
-                            <Building2 className="h-4 w-4" />
-                            {identity.name}
-                          </span>
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {moduleIdentityConfig.payoutsIdentityId 
-                    ? 'Users will use this identity by default' 
-                    : 'Users must complete business registration to use Pay-outs'}
-                </p>
-              </div>
+                  className="w-4 h-4 rounded border-border accent-module-payouts"
+                />
+                <div>
+                  <p className="font-medium text-foreground">Require new registration</p>
+                  <p className="text-sm text-muted-foreground">Force users to create a new identity for this module</p>
+                </div>
+              </label>
+
+              {/* Identity Selection - only show if not requiring new */}
+              {!moduleIdentityConfig.payoutsRequireNew && (
+                <div className="space-y-2">
+                  <Label>Use Existing Identity (from Pay-outs module)</Label>
+                  <Select 
+                    value={moduleIdentityConfig.payoutsIdentityId || 'none'} 
+                    onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                      ...prev, 
+                      payoutsIdentityId: value === 'none' ? null : value 
+                    }))}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select identity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        <span className="text-muted-foreground">No identity selected (show onboarding)</span>
+                      </SelectItem>
+                      {payoutsInstitutionIdentities.length > 0 ? (
+                        payoutsInstitutionIdentities.map((identity) => (
+                          <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                            <span className="flex items-center gap-2">
+                              <Building2 className="h-4 w-4" />
+                              {identity.name}
+                            </span>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                          No identities in Pay-outs module yet
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {moduleIdentityConfig.payoutsIdentityId 
+                      ? 'Users will use this identity by default' 
+                      : 'Users must complete business registration to use Pay-outs'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -705,48 +785,69 @@ const ConfigPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Default Identity (Person or Institution)</Label>
-                <Select 
-                  value={moduleIdentityConfig.cryptoWalletIdentityId || 'force-new'} 
-                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+              {/* Require New Registration Toggle */}
+              <label className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border cursor-pointer hover:border-module-crypto/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={moduleIdentityConfig.cryptoWalletRequireNew}
+                  onChange={(e) => setModuleIdentityConfig(prev => ({ 
                     ...prev, 
-                    cryptoWalletIdentityId: value === 'force-new' ? null : value 
+                    cryptoWalletRequireNew: e.target.checked,
+                    cryptoWalletIdentityId: e.target.checked ? null : prev.cryptoWalletIdentityId
                   }))}
-                >
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Select identity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="force-new">
-                      <span className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Require new registration
-                      </span>
-                    </SelectItem>
-                    {allValidIdentities.map((identity) => (
-                      <SelectItem key={identity.identity_id} value={identity.identity_id}>
-                        <span className="flex items-center gap-2">
-                          {identity.identity_type?.toUpperCase() === 'INSTITUTION' ? (
-                            <Building2 className="h-4 w-4" />
-                          ) : (
-                            <User className="h-4 w-4" />
-                          )}
-                          {identity.name}
-                          <span className="text-xs text-muted-foreground">
-                            ({identity.identity_type?.toUpperCase() === 'INSTITUTION' ? 'Institution' : 'Person'})
-                          </span>
-                        </span>
+                  className="w-4 h-4 rounded border-border accent-module-crypto"
+                />
+                <div>
+                  <p className="font-medium text-foreground">Require new registration</p>
+                  <p className="text-sm text-muted-foreground">Force users to create a new identity for this module</p>
+                </div>
+              </label>
+
+              {/* Identity Selection - only show if not requiring new */}
+              {!moduleIdentityConfig.cryptoWalletRequireNew && (
+                <div className="space-y-2">
+                  <Label>Use Existing Identity (from Crypto Wallet module)</Label>
+                  <Select 
+                    value={moduleIdentityConfig.cryptoWalletIdentityId || 'none'} 
+                    onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                      ...prev, 
+                      cryptoWalletIdentityId: value === 'none' ? null : value 
+                    }))}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select identity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        <span className="text-muted-foreground">No identity selected (show onboarding)</span>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {moduleIdentityConfig.cryptoWalletIdentityId 
-                    ? 'Users will use this identity by default' 
-                    : 'Users must complete registration to use Crypto Wallet'}
-                </p>
-              </div>
+                      {cryptoWalletIdentities.length > 0 ? (
+                        cryptoWalletIdentities.map((identity) => (
+                          <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                            <span className="flex items-center gap-2">
+                              {identity.identity_type?.toUpperCase() === 'INSTITUTION' ? (
+                                <Building2 className="h-4 w-4" />
+                              ) : (
+                                <User className="h-4 w-4" />
+                              )}
+                              {identity.name}
+                            </span>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                          No identities in Crypto Wallet module yet
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {moduleIdentityConfig.cryptoWalletIdentityId 
+                      ? 'Users will use this identity by default' 
+                      : 'Users must complete registration to use Crypto Wallet'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -763,86 +864,80 @@ const ConfigPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Default Identity (Person or Institution)</Label>
-                <Select 
-                  value={moduleIdentityConfig.whiteLabelIdentityId || 'force-new'} 
-                  onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+              {/* Require New Registration Toggle */}
+              <label className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border cursor-pointer hover:border-module-whitelabel/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={moduleIdentityConfig.whiteLabelRequireNew}
+                  onChange={(e) => setModuleIdentityConfig(prev => ({ 
                     ...prev, 
-                    whiteLabelIdentityId: value === 'force-new' ? null : value 
+                    whiteLabelRequireNew: e.target.checked,
+                    whiteLabelIdentityId: e.target.checked ? null : prev.whiteLabelIdentityId
                   }))}
-                >
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Select identity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="force-new">
-                      <span className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        Require new registration
-                      </span>
-                    </SelectItem>
-                    {allValidIdentities.map((identity) => (
-                      <SelectItem key={identity.identity_id} value={identity.identity_id}>
-                        <span className="flex items-center gap-2">
-                          {identity.identity_type?.toUpperCase() === 'INSTITUTION' ? (
-                            <Building2 className="h-4 w-4" />
-                          ) : (
-                            <User className="h-4 w-4" />
-                          )}
-                          {identity.name}
-                          <span className="text-xs text-muted-foreground">
-                            ({identity.identity_type?.toUpperCase() === 'INSTITUTION' ? 'Institution' : 'Person'})
-                          </span>
-                        </span>
+                  className="w-4 h-4 rounded border-border accent-module-whitelabel"
+                />
+                <div>
+                  <p className="font-medium text-foreground">Require new registration</p>
+                  <p className="text-sm text-muted-foreground">Force users to create a new identity for this module</p>
+                </div>
+              </label>
+
+              {/* Identity Selection - only show if not requiring new */}
+              {!moduleIdentityConfig.whiteLabelRequireNew && (
+                <div className="space-y-2">
+                  <Label>Use Existing Identity (from White Label module)</Label>
+                  <Select 
+                    value={moduleIdentityConfig.whiteLabelIdentityId || 'none'} 
+                    onValueChange={(value) => setModuleIdentityConfig(prev => ({ 
+                      ...prev, 
+                      whiteLabelIdentityId: value === 'none' ? null : value 
+                    }))}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select identity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        <span className="text-muted-foreground">No identity selected (show onboarding)</span>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {moduleIdentityConfig.whiteLabelIdentityId 
-                    ? 'Users will use this identity by default' 
-                    : 'Users must complete registration to use White Label Wallet'}
-                </p>
-              </div>
+                      {whiteLabelIdentities.length > 0 ? (
+                        whiteLabelIdentities.map((identity) => (
+                          <SelectItem key={identity.identity_id} value={identity.identity_id}>
+                            <span className="flex items-center gap-2">
+                              {identity.identity_type?.toUpperCase() === 'INSTITUTION' ? (
+                                <Building2 className="h-4 w-4" />
+                              ) : (
+                                <User className="h-4 w-4" />
+                              )}
+                              {identity.name}
+                            </span>
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                          No identities in White Label module yet
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {moduleIdentityConfig.whiteLabelIdentityId 
+                      ? 'Users will use this identity by default' 
+                      : 'Users must complete registration to use White Label Wallet'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Global Settings */}
-          <div className="glass rounded-xl p-8">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Settings className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-foreground">Global Settings</h3>
-                <p className="text-sm text-muted-foreground">Control module behavior</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <label className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border cursor-pointer hover:border-primary/50 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={moduleIdentityConfig.requireOnboarding}
-                  onChange={(e) => setModuleIdentityConfig(prev => ({ ...prev, requireOnboarding: e.target.checked }))}
-                  className="w-4 h-4 rounded border-border"
-                />
-                <div>
-                  <p className="font-medium text-foreground">Always require fresh onboarding</p>
-                  <p className="text-sm text-muted-foreground">Force users to create new identity even if one is configured above</p>
-                </div>
-              </label>
-            </div>
-
-            <div className="mt-8 flex justify-end">
-              <Button 
-                onClick={handleSaveModuleIdentityConfig}
-                className="bg-primary hover:bg-primary/90"
-              >
-                Save Module Settings
-              </Button>
-            </div>
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button 
+              onClick={handleSaveModuleIdentityConfig}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Save Module Settings
+            </Button>
           </div>
         </TabsContent>
 
