@@ -476,12 +476,13 @@ export interface CreateCryptoDestinationAddressRequest {
 
 export interface CryptoDestinationAddress {
   id: string;
-  destination_address_id?: string;
+  paxos_crypto_destination_id?: string;
   account_id: string;
   paxos_account_id: string;
   crypto_network: string;
   address: string;
   nickname?: string;
+  label?: string;
   status: string;
   user_id: string;
   created_at: string;
