@@ -554,6 +554,7 @@ export interface ListQueryParams {
   status?: string;
   network?: string;
   account_id?: string;
+  module?: ModuleName;
 }
 
 export interface IdentityQueryParams extends ListQueryParams {

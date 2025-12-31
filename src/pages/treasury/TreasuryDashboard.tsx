@@ -20,7 +20,7 @@ const TreasuryDashboard: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
 
-  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'TREASURY' });
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities({ module: 'TREASURY' });
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();

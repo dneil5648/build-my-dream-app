@@ -60,7 +60,7 @@ const PayInsDashboard: React.FC = () => {
     sort: 'created_at',
     order: 'DESC'
   });
-  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'PAY_INS' });
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities({ module: 'PAY_INS' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
   const { data: cryptoAddressesResponse, isLoading: loadingCryptoAddresses } = useCryptoAddresses(
