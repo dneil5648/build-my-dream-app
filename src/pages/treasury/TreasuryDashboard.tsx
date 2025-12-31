@@ -708,7 +708,13 @@ const TreasuryDashboard: React.FC = () => {
               </Button>
             </CardHeader>
             <CardContent>
-              <AccountsTable accounts={accounts} isLoading={loadingAccounts} />
+              <AccountsTable 
+                accounts={accounts} 
+                isLoading={loadingAccounts}
+                depositAddresses={cryptoAddresses}
+                destinationAddresses={destinations}
+                showAddressColumns={true}
+              />
             </CardContent>
           </Card>
         </TabsContent>
