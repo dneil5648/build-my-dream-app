@@ -21,6 +21,7 @@ import SandboxDeposit from "./pages/payins/SandboxDeposit";
 import CryptoWallet from "./pages/crypto/CryptoWallet";
 import CryptoDeposit from "./pages/crypto/CryptoDeposit";
 import CryptoWithdraw from "./pages/crypto/CryptoWithdraw";
+import CryptoActivity from "./pages/crypto/CryptoActivity";
 import TreasuryDashboard from "./pages/treasury/TreasuryDashboard";
 import TreasuryConvert from "./pages/treasury/TreasuryConvert";
 import TreasuryDeposit from "./pages/treasury/TreasuryDeposit";
@@ -67,6 +68,7 @@ const App = () => (
                 <Route path="crypto/wallet" element={<CryptoWallet />} />
                 <Route path="crypto/deposit" element={<CryptoDeposit />} />
                 <Route path="crypto/withdraw" element={<CryptoWithdraw />} />
+                <Route path="crypto/activity" element={<CryptoActivity />} />
                 <Route path="crypto/addresses" element={<CryptoWallet />} />
                 
                 {/* Treasury */}
