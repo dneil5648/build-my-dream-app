@@ -11,6 +11,7 @@ import { FiatDepositFlow } from '@/components/shared/FiatDepositFlow';
 import { ManualConversionForm } from '@/components/shared/ManualConversionForm';
 import { DestinationAddressList } from '@/components/shared/DestinationAddressList';
 import { CreateDestinationAddressForm } from '@/components/shared/CreateDestinationAddressForm';
+import { FiatDepositInstructionDetailModal } from '@/components/shared/FiatDepositInstructionDetailModal';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,7 +22,7 @@ import { useDepositInstructions } from '@/hooks/useFiat';
 import { useCryptoDestinationAddresses, useCreateCryptoDestinationAddress } from '@/hooks/useCrypto';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useConvertAssets } from '@/hooks/useAssets';
-import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, PaxosAccount, Transaction, ConvertAssetRequest, CreateCryptoDestinationAddressRequest } from '@/api/types';
+import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, PaxosAccount, Transaction, ConvertAssetRequest, CreateCryptoDestinationAddressRequest, FiatDepositInstructions } from '@/api/types';
 import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
 
@@ -31,6 +32,7 @@ const PayoutsDashboard: React.FC = () => {
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [showCreateDestination, setShowCreateDestination] = useState(false);
   const [showFiatDeposit, setShowFiatDeposit] = useState(false);
+  const [selectedInstruction, setSelectedInstruction] = useState<FiatDepositInstructions | null>(null);
 
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'PAY_OUTS' });
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities({ module: 'PAY_OUTS' });
@@ -373,10 +375,21 @@ const PayoutsDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {depositInstructions.map((inst: any) => (
-                    <div key={inst.id} className="p-4 rounded-lg bg-secondary/50 border border-border">
+                  {depositInstructions.map((inst: FiatDepositInstructions) => (
+                    <div 
+                      key={inst.id} 
+                      className="p-4 rounded-lg bg-secondary/50 border border-border hover:border-primary/50 hover:bg-secondary/70 cursor-pointer transition-colors"
+                      onClick={() => setSelectedInstruction(inst)}
+                    >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">{inst.network}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{inst.network}</span>
+                          {inst.source_asset && inst.destination_asset && inst.source_asset !== inst.destination_asset && (
+                            <span className="text-xs text-muted-foreground">
+                              {inst.source_asset} → {inst.destination_asset}
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success">{inst.status}</span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 font-mono">{inst.deposit_instructions_id?.slice(0, 20)}...</p>
@@ -512,6 +525,13 @@ const PayoutsDashboard: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Fiat Deposit Instruction Detail Modal */}
+      <FiatDepositInstructionDetailModal
+        instruction={selectedInstruction}
+        isOpen={!!selectedInstruction}
+        onClose={() => setSelectedInstruction(null)}
+      />
     </div>
   );
 };
