@@ -201,7 +201,7 @@ const WhiteLabelSend: React.FC = () => {
   const walletName = whiteLabelConfig?.walletName || 'My Wallet';
   const displayAssetName = formData.asset ? getAssetDisplayName(formData.asset) : '';
   const assetMapping = whiteLabelConfig?.assetMappings.find(m => m.assetId === formData.asset);
-  const selectedWallet = accounts.find(a => a.paxos_account_id === formData.account);
+  const selectedWallet = accounts.find(a => a.id === formData.account);
 
   if (showConfirmation) {
     return (
@@ -331,7 +331,7 @@ const WhiteLabelSend: React.FC = () => {
             </SelectTrigger>
             <SelectContent>
               {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.paxos_account_id}>
+                <SelectItem key={account.id} value={account.id}>
                   {account.nickname || `Wallet ${account.paxos_account_id.slice(0, 8)}...`}
                 </SelectItem>
               ))}
