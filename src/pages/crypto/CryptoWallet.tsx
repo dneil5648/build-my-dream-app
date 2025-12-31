@@ -17,7 +17,7 @@ const CryptoWallet: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'CRYPTO_WALLET' });
   const { data: identitiesResponse } = useIdentities({ module: 'CRYPTO_WALLET' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
   const { transactions: allTransactions, isLoading: loadingTransactions } = useTransactions({ limit: 4 });

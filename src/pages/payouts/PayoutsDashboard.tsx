@@ -22,7 +22,7 @@ const PayoutsDashboard: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
 
-  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'PAY_OUTS' });
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities({ module: 'PAY_OUTS' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
   const { data: fiatAccountsResponse, isLoading: loadingFiatAccounts } = useFiatAccounts();
