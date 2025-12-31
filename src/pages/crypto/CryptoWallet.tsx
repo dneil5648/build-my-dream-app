@@ -48,12 +48,18 @@ const CryptoWallet: React.FC = () => {
     (tx: Transaction) => tx.transaction_type === 'CRYPTO_DEPOSIT' || tx.transaction_type === 'CRYPTO_WITHDRAWAL'
   );
   
-  // Get addresses for selected account
+  // Get addresses for selected account - only show addresses belonging to accounts in this module
   const selectedAccountData = accounts.find(acc => acc.id === selectedAccountId);
+  const moduleAccountIds = accounts.map(acc => acc.paxos_account_id);
   const allCryptoAddresses = cryptoAddressesResponse?.data || [];
+  // Filter to only addresses belonging to accounts in CRYPTO_WALLET module
+  const moduleAddresses = allCryptoAddresses.filter((addr: CryptoAddress) => 
+    moduleAccountIds.includes(addr.paxos_account_id)
+  );
+  // Further filter to selected account if one is selected
   const cryptoAddresses = selectedAccountData 
-    ? allCryptoAddresses.filter((addr: CryptoAddress) => addr.paxos_account_id === selectedAccountData.paxos_account_id)
-    : allCryptoAddresses;
+    ? moduleAddresses.filter((addr: CryptoAddress) => addr.paxos_account_id === selectedAccountData.paxos_account_id)
+    : moduleAddresses;
 
   React.useEffect(() => {
     if (accounts.length > 0 && !selectedAccountId) {
