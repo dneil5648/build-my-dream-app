@@ -559,6 +559,7 @@ export interface ListQueryParams {
 export interface IdentityQueryParams extends ListQueryParams {
   name?: string;
   identity_type?: IdentityType;
+  module?: ModuleName;
 }
 
 export interface TransactionQueryParams extends ListQueryParams {
