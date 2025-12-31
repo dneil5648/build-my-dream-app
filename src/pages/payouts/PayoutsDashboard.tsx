@@ -428,7 +428,7 @@ const PayoutsDashboard: React.FC = () => {
               </Button>
             </div>
             <DestinationAddressList
-              destinations={destinations}
+              addresses={destinations}
               isLoading={loadingDestinations}
             />
           </div>
@@ -470,6 +470,7 @@ const PayoutsDashboard: React.FC = () => {
             <DialogTitle>Register Destination Wallet</DialogTitle>
           </DialogHeader>
           <CreateDestinationAddressForm
+            accounts={accounts}
             onSubmit={handleCreateDestination}
             isLoading={createDestinationAddress.isPending}
             onCancel={() => setShowCreateDestination(false)}
