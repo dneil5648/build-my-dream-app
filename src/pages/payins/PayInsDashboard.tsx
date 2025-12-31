@@ -374,46 +374,27 @@ const PayInsDashboard: React.FC = () => {
                       </TableHeader>
                       <TableBody>
                         {allTransactions.slice(0, 10).map((tx: Transaction) => {
-                          // Infer transaction type from data
-                          const transferType = tx.transfer_type?.toUpperCase() || '';
-                          const txType = tx.transaction_type?.toUpperCase() || '';
-                          
-                          // For orchestration transactions, infer type from source/destination assets
-                          let inferredType = transferType;
-                          if (txType === 'ORCHESTRATION' || !transferType) {
-                            if (tx.source_asset && tx.destination_asset && tx.source_asset !== tx.destination_asset) {
-                              inferredType = 'CONVERSION';
-                            }
-                          }
-                          
-                          const isDeposit = inferredType.includes('DEPOSIT');
-                          const isWithdraw = inferredType.includes('WITHDRAW');
-                          const isConversion = inferredType === 'CONVERSION' || (tx.source_asset !== tx.destination_asset);
-                          
-                          // Display label
-                          const displayType = isConversion 
-                            ? `${tx.source_asset} → ${tx.destination_asset}` 
-                            : (inferredType.replace(/_/g, ' ') || 'Unknown');
+                          const isDeposit = tx.transfer_type?.includes('DEPOSIT');
+                          const isWithdraw = tx.transfer_type?.includes('WITHDRAW');
+                          const isConversion = tx.transfer_type === 'CONVERSION';
                           
                           return (
                             <TableRow key={tx.id} className="hover:bg-secondary/30">
                               <TableCell>
                                 <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                                  isDeposit ? 'bg-success/20' : isWithdraw ? 'bg-warning/20' : isConversion ? 'bg-module-payins/20' : 'bg-primary/20'
+                                  isDeposit ? 'bg-success/20' : isWithdraw ? 'bg-warning/20' : 'bg-primary/20'
                                 }`}>
                                   {isDeposit ? (
                                     <ArrowDownToLine className="h-4 w-4 text-success" />
                                   ) : isWithdraw ? (
                                     <ArrowUpFromLine className="h-4 w-4 text-warning" />
-                                  ) : isConversion ? (
-                                    <ArrowRightLeft className="h-4 w-4 text-module-payins" />
                                   ) : (
                                     <RefreshCw className="h-4 w-4 text-primary" />
                                   )}
                                 </div>
                               </TableCell>
                               <TableCell className="font-medium text-foreground">
-                                {displayType}
+                                {tx.transfer_type?.replace(/_/g, ' ') || tx.transaction_type || 'Unknown'}
                               </TableCell>
                               <TableCell className="font-mono text-foreground">
                                 {parseFloat(tx.amount || '0').toLocaleString()}
