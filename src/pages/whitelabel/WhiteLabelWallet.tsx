@@ -19,7 +19,7 @@ const WhiteLabelWallet: React.FC = () => {
   const [whiteLabelConfig, setWhiteLabelConfig] = useState<WhiteLabelConfig | null>(null);
 
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
-  const { data: identitiesResponse } = useIdentities();
+  const { data: identitiesResponse } = useIdentities({ module: 'WHITE_LABEL' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
   const { transactions: recentActivity, isLoading: loadingTransactions } = useTransactions({ limit: 3 });
   const createIdentity = useCreateIdentity();
