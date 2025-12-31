@@ -337,9 +337,9 @@ const PayInsDashboard: React.FC = () => {
                       </TableHeader>
                       <TableBody>
                         {allTransactions.slice(0, 10).map((tx: Transaction) => {
-                          const isDeposit = tx.transaction_type?.includes('DEPOSIT');
-                          const isWithdraw = tx.transaction_type?.includes('WITHDRAW');
-                          const isConversion = tx.transaction_type === 'CONVERSION';
+                          const isDeposit = tx.transfer_type?.includes('DEPOSIT');
+                          const isWithdraw = tx.transfer_type?.includes('WITHDRAW');
+                          const isConversion = tx.transfer_type === 'CONVERSION';
                           
                           return (
                             <TableRow key={tx.id} className="hover:bg-secondary/30">
@@ -357,7 +357,7 @@ const PayInsDashboard: React.FC = () => {
                                 </div>
                               </TableCell>
                               <TableCell className="font-medium text-foreground">
-                                {tx.transaction_type?.replace(/_/g, ' ') || 'Unknown'}
+                                {tx.transfer_type?.replace(/_/g, ' ') || 'Unknown'}
                               </TableCell>
                               <TableCell className="font-mono text-foreground">
                                 {parseFloat(tx.amount || '0').toLocaleString()}
