@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Check, ExternalLink, ArrowRight, DollarSign, Coins, Clock, Building2, Wallet } from 'lucide-react';
+import { Copy, Check, ArrowRight, DollarSign, Clock, Building2, Wallet, User } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +49,15 @@ const getInstructionTypeLabel = (type: string): string => {
   return types[type] || type;
 };
 
+const getDestinationTypeLabel = (type?: string): string => {
+  const types: Record<string, string> = {
+    'CRYPTO': 'External Crypto Wallet',
+    'FIAT': 'Fiat Account',
+    'PROFILE': 'Internal Profile (Hold)',
+  };
+  return type ? types[type] || type : 'Unknown';
+};
+
 export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionDetailModalProps> = ({
   instruction,
   isOpen,
@@ -69,7 +78,23 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
   const destinationAsset = instruction.destination_asset || 'USD';
   const isConversion = sourceAsset !== destinationAsset;
   const isAutoSend = instruction.instruction_type === 'DEPOSIT_CONVERT_SEND';
-  const hasDestination = instruction.destination_address || instruction.destination_crypto_address_id;
+  const destinationType = instruction.destination_type;
+  const hasDestinationDetails = instruction.destination_address || instruction.destination_crypto_address_id || destinationType;
+
+  // Determine what icon/label to show for destination
+  const getDestinationIcon = () => {
+    if (destinationType === 'CRYPTO') return <Wallet className="h-6 w-6 text-warning" />;
+    if (destinationType === 'PROFILE') return <User className="h-6 w-6 text-primary" />;
+    if (destinationType === 'FIAT') return <Building2 className="h-6 w-6 text-success" />;
+    return <Wallet className="h-6 w-6 text-warning" />;
+  };
+
+  const getDestinationLabel = () => {
+    if (destinationType === 'CRYPTO') return 'External Wallet';
+    if (destinationType === 'PROFILE') return 'Profile (Hold)';
+    if (destinationType === 'FIAT') return 'Fiat Account';
+    return 'External';
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -117,20 +142,23 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
                 </div>
               </div>
 
-              {/* Auto-send indicator */}
-              {isAutoSend && (
+              {/* Auto-send indicator - show for CRYPTO or when destination details exist */}
+              {(isAutoSend || (destinationType && destinationType !== 'PROFILE')) && (
                 <>
                   <div className="flex flex-col items-center">
                     <ArrowRight className="h-6 w-6 text-warning" />
                     <span className="text-xs text-warning mt-1">Auto-sends</span>
                   </div>
                   <div className="flex flex-col items-center gap-2">
-                    <div className="h-14 w-14 rounded-full bg-background flex items-center justify-center border-2 border-warning/50 shadow-lg">
-                      <Wallet className="h-6 w-6 text-warning" />
+                    <div className={`h-14 w-14 rounded-full bg-background flex items-center justify-center border-2 ${
+                      destinationType === 'CRYPTO' ? 'border-warning/50' : 
+                      destinationType === 'FIAT' ? 'border-success/50' : 'border-primary/50'
+                    } shadow-lg`}>
+                      {getDestinationIcon()}
                     </div>
                     <div className="text-center">
-                      <p className="font-semibold text-foreground">External</p>
-                      <p className="text-xs text-muted-foreground">Wallet</p>
+                      <p className="font-semibold text-foreground">{getDestinationLabel()}</p>
+                      <p className="text-xs text-muted-foreground">Target</p>
                     </div>
                   </div>
                 </>
@@ -138,19 +166,24 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
             </div>
 
             {/* Flow Description */}
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-2">
               <Badge variant="outline" className="bg-background/50">
                 {getInstructionTypeLabel(instruction.instruction_type)}
               </Badge>
+              {destinationType && (
+                <p className="text-xs text-muted-foreground">
+                  Destination: {getDestinationTypeLabel(destinationType)}
+                </p>
+              )}
             </div>
           </div>
 
-          {/* Destination Wallet Details (for auto-send) */}
-          {isAutoSend && hasDestination && (
+          {/* Destination Details (for CRYPTO type with address details) */}
+          {destinationType === 'CRYPTO' && (instruction.destination_address || instruction.destination_nickname || instruction.destination_network) && (
             <div className="p-4 rounded-lg bg-warning/10 border border-warning/20 space-y-3">
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-warning" />
-                <h4 className="font-medium text-foreground">Destination Wallet</h4>
+                <h4 className="font-medium text-foreground">Destination Crypto Wallet</h4>
               </div>
               
               <div className="space-y-2">
@@ -184,6 +217,19 @@ export const FiatDepositInstructionDetailModal: React.FC<FiatDepositInstructionD
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Profile Destination Info */}
+          {destinationType === 'PROFILE' && (
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+              <div className="flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                <h4 className="font-medium text-foreground">Internal Profile</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Funds will be held in your account after conversion. No external transfer.
+              </p>
             </div>
           )}
 

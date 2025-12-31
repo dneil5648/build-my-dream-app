@@ -394,6 +394,8 @@ export interface FiatDepositInstructions {
   source_asset?: string;
   destination_asset?: string;
   orchestration_rule_id?: string;
+  // Destination type for auto-send scenarios
+  destination_type?: 'CRYPTO' | 'FIAT' | 'PROFILE';
   // Linked destination for auto-send scenarios
   destination_crypto_address_id?: string;
   destination_address?: string;
