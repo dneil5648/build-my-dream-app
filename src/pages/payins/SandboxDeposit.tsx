@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowDownToLine, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowDownToLine, Loader2, Copy, Check, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -8,34 +8,45 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
 import { useAccounts } from '@/hooks/useAccounts';
-import { useSandboxDeposit } from '@/hooks/useFiat';
+import { useDepositInstructions, useSandboxDeposit } from '@/hooks/useFiat';
+import { FiatDepositInstructions } from '@/api/types';
 
 const SandboxDeposit: React.FC = () => {
-  const [formData, setFormData] = useState({
-    account_id: '',
-    amount: '',
-    asset: 'USD',
-  });
+  const [selectedInstructionId, setSelectedInstructionId] = useState('');
+  const [amount, setAmount] = useState('1000.00');
+  const [asset, setAsset] = useState('USD');
+  const [copied, setCopied] = useState(false);
   const [transaction, setTransaction] = useState<{
     id: string;
     amount: string;
     status: 'PENDING' | 'PROCESSING' | 'COMPLETED';
   } | null>(null);
 
-  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'PAY_INS' });
+  const { data: instructionsResponse, isLoading: loadingInstructions } = useDepositInstructions();
   const sandboxDeposit = useSandboxDeposit();
+  
   const accounts = accountsResponse?.data || [];
+  const instructions = instructionsResponse?.data || [];
+  const selectedInstruction = instructions.find((i: FiatDepositInstructions) => i.id === selectedInstructionId);
+
+  const handleCopyMemo = (memo: string) => {
+    navigator.clipboard.writeText(memo);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success('Memo ID copied to clipboard');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.account_id || !formData.amount) {
-      toast.error('Please fill in all fields');
+    if (!selectedInstructionId || !amount) {
+      toast.error('Please select deposit instructions and enter an amount');
       return;
     }
 
     // Show pending state
-    setTransaction({ id: 'TXN-' + Date.now(), amount: formData.amount, status: 'PENDING' });
+    setTransaction({ id: 'TXN-' + Date.now(), amount, status: 'PENDING' });
     
     try {
       // Update to processing
@@ -44,14 +55,34 @@ const SandboxDeposit: React.FC = () => {
       }, 500);
 
       await sandboxDeposit.mutateAsync({
-        account_id: formData.account_id,
-        amount: formData.amount,
-        asset: formData.asset,
+        deposit_instruction_id: selectedInstructionId,
+        amount,
+        asset,
+        account_number: '9876543210',
+        account_owner_address: {
+          country: 'US',
+          address1: '123 Main Street',
+          city: 'New York',
+          province: 'NY',
+          zip_code: '10001'
+        },
+        routing_details: {
+          routing_number_type: 'ABA',
+          routing_number: '123456789',
+          bank_name: 'Test Bank of America',
+          bank_address: {
+            country: 'US',
+            address1: '456 Bank Street',
+            city: 'New York',
+            province: 'NY',
+            zip_code: '10002'
+          }
+        }
       });
       
       // Update to completed
       setTransaction(prev => prev ? {...prev, status: 'COMPLETED'} : null);
-      toast.success('Sandbox deposit completed!');
+      toast.success('Sandbox deposit completed! Check your balance.');
     } catch (error) {
       setTransaction(null);
       toast.error(error instanceof Error ? error.message : 'Failed to create sandbox deposit');
@@ -80,44 +111,92 @@ const SandboxDeposit: React.FC = () => {
         </p>
       </div>
 
+      {/* Info Banner */}
+      <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 flex gap-3">
+        <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-muted-foreground">
+          <p className="font-medium text-foreground mb-1">How it works:</p>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>First, create deposit instructions from the Pay-ins dashboard</li>
+            <li>Select the deposit instruction below</li>
+            <li>Enter an amount and simulate the deposit</li>
+            <li>Funds will appear in your account balance</li>
+          </ol>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="glass rounded-xl p-8 space-y-6">
         <div className="space-y-2">
-          <Label>Account</Label>
+          <Label>Deposit Instructions</Label>
           <Select 
-            value={formData.account_id} 
-            onValueChange={(v) => setFormData({...formData, account_id: v})}
-            disabled={loadingAccounts}
+            value={selectedInstructionId} 
+            onValueChange={setSelectedInstructionId}
+            disabled={loadingInstructions}
           >
             <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder={loadingAccounts ? 'Loading...' : 'Select account'} />
+              <SelectValue placeholder={loadingInstructions ? 'Loading...' : 'Select deposit instructions'} />
             </SelectTrigger>
             <SelectContent>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.paxos_account_id}>
-                  Account {account.paxos_account_id.slice(0, 8)}...
-                </SelectItem>
-              ))}
-              {accounts.length === 0 && !loadingAccounts && (
-                <SelectItem value="" disabled>No accounts found</SelectItem>
+              {instructions.length > 0 ? (
+                instructions.map((instruction: FiatDepositInstructions) => (
+                  <SelectItem key={instruction.id} value={instruction.id}>
+                    {instruction.network} • {instruction.instruction_type} • {instruction.deposit_instructions_id?.slice(0, 12)}...
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                  No deposit instructions found. Create one from the Pay-ins dashboard first.
+                </div>
               )}
             </SelectContent>
           </Select>
         </div>
 
+        {/* Selected Instruction Details */}
+        {selectedInstruction && (
+          <div className="p-4 rounded-lg bg-muted/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Network</span>
+              <span className="font-medium text-foreground">{selectedInstruction.network}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Type</span>
+              <span className="font-medium text-foreground capitalize">{selectedInstruction.instruction_type}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Status</span>
+              <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success capitalize">{selectedInstruction.status}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Instruction ID</span>
+              <Button 
+                type="button"
+                variant="ghost" 
+                size="sm"
+                onClick={() => handleCopyMemo(selectedInstruction.deposit_instructions_id)}
+                className="h-auto py-1 px-2 gap-1.5"
+              >
+                <span className="font-mono text-xs">{selectedInstruction.deposit_instructions_id?.slice(0, 16)}...</span>
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label>Amount</Label>
             <Input
-              type="number"
-              placeholder="0.00"
-              value={formData.amount}
-              onChange={(e) => setFormData({...formData, amount: e.target.value})}
+              type="text"
+              placeholder="1000.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               className="bg-secondary border-border"
             />
           </div>
           <div className="space-y-2">
             <Label>Asset</Label>
-            <Select value={formData.asset} onValueChange={(v) => setFormData({...formData, asset: v})}>
+            <Select value={asset} onValueChange={setAsset}>
               <SelectTrigger className="bg-secondary border-border">
                 <SelectValue />
               </SelectTrigger>
@@ -132,7 +211,7 @@ const SandboxDeposit: React.FC = () => {
 
         <Button 
           type="submit" 
-          disabled={sandboxDeposit.isPending || !formData.amount || !formData.account_id} 
+          disabled={sandboxDeposit.isPending || !amount || !selectedInstructionId} 
           className="w-full bg-success hover:bg-success/90"
         >
           {sandboxDeposit.isPending ? (
@@ -156,7 +235,7 @@ const SandboxDeposit: React.FC = () => {
           <div className="flex items-center justify-between p-4 rounded-lg bg-secondary border border-border">
             <div>
               <p className="font-mono text-sm text-muted-foreground">{transaction.id}</p>
-              <p className="font-semibold text-foreground">${transaction.amount} {formData.asset}</p>
+              <p className="font-semibold text-foreground">${transaction.amount} {asset}</p>
             </div>
             <TransactionStatusBadge status={transaction.status} />
           </div>

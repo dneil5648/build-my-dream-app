@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpFromLine, Building2, Clock, Plus, CheckCircle2, Wallet, Loader2, UserPlus } from 'lucide-react';
+import { ArrowUpFromLine, Building2, Clock, Plus, CheckCircle2, Wallet, Loader2, UserPlus, Send, ArrowRightLeft, DollarSign } from 'lucide-react';
 import { StatCard } from '@/components/shared/StatCard';
 import { TransactionStatusBadge } from '@/components/shared/TransactionStatusBadge';
 import { AccountSelector } from '@/components/shared/AccountSelector';
 import { AccountBalancesCard } from '@/components/shared/AccountBalancesCard';
 import { InstitutionOnboardingWizard } from '@/components/shared/InstitutionOnboardingWizard';
 import { CreateAccountForm } from '@/components/shared/CreateAccountForm';
+import { FiatDepositFlow } from '@/components/shared/FiatDepositFlow';
+import { ManualConversionForm } from '@/components/shared/ManualConversionForm';
+import { DestinationAddressList } from '@/components/shared/DestinationAddressList';
+import { CreateDestinationAddressForm } from '@/components/shared/CreateDestinationAddressForm';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
-import { useFiatAccounts } from '@/hooks/useFiat';
+import { useDepositInstructions } from '@/hooks/useFiat';
+import { useCryptoDestinationAddresses, useCreateCryptoDestinationAddress } from '@/hooks/useCrypto';
 import { useTransactions } from '@/hooks/useTransactions';
-import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, Transaction } from '@/api/types';
+import { useConvertAssets } from '@/hooks/useAssets';
+import { CreateIdentityRequest, CreateAccountRequest, PaxosIdentity, PaxosAccount, Transaction, ConvertAssetRequest, CreateCryptoDestinationAddressRequest } from '@/api/types';
 import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
 
@@ -21,26 +29,40 @@ const PayoutsDashboard: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [showCreateDestination, setShowCreateDestination] = useState(false);
+  const [showFiatDeposit, setShowFiatDeposit] = useState(false);
 
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'PAY_OUTS' });
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities({ module: 'PAY_OUTS' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
-  const { data: fiatAccountsResponse, isLoading: loadingFiatAccounts } = useFiatAccounts();
+  const { data: instructionsResponse, isLoading: loadingInstructions } = useDepositInstructions();
+  const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses();
   const { transactions: allTransactions, isLoading: loadingTransactions } = useTransactions({ 
     limit: 10,
+    account_id: selectedAccountId || undefined,
     sort: 'created_at',
     order: 'DESC'
   });
   const createIdentity = useCreateIdentity();
   const createAccount = useCreateAccount();
+  const convertAssets = useConvertAssets();
+  const createDestinationAddress = useCreateCryptoDestinationAddress();
 
   const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
-  const fiatAccounts = fiatAccountsResponse?.data || [];
+  const depositInstructions = instructionsResponse?.data || [];
+  const destinations = destinationsResponse?.data || [];
+  
+  // Filter relevant transactions
   const payouts = allTransactions.filter(
-    (tx: Transaction) => tx.transaction_type === 'CRYPTO_WITHDRAWAL' || tx.transaction_type === 'WIRE_WITHDRAWAL' || tx.transaction_type === 'BANK_WITHDRAWAL'
+    (tx: Transaction) => tx.transaction_type === 'CRYPTO_WITHDRAWAL'
   );
+  const conversions = allTransactions.filter(
+    (tx: Transaction) => tx.transaction_type === 'CONVERSION'
+  );
+
+  const selectedAccount = accounts.find((a: PaxosAccount) => a.id === selectedAccountId);
 
   // Get module config and check for institution identity
   const moduleConfig = getModuleIdentityConfig();
@@ -50,7 +72,6 @@ const PayoutsDashboard: React.FC = () => {
   const institutionIdentity = configuredIdentity || identities.find((i: PaxosIdentity) => i.identity_type?.toUpperCase() === 'INSTITUTION');
   const needsOnboarding = !loadingIdentities && !institutionIdentity && (moduleConfig.requireOnboarding || !moduleConfig.payoutsIdentityId);
 
-  // Auto-select first account
   useEffect(() => {
     if (accounts.length > 0 && !selectedAccountId) {
       setSelectedAccountId(accounts[0].id);
@@ -62,23 +83,19 @@ const PayoutsDashboard: React.FC = () => {
       const result = await createIdentity.mutateAsync(data);
       const createdIdentity = result?.data as PaxosIdentity;
       
-      // Only process for institution identity (final step in wizard)
       if (data.identity_request.institution_details && createdIdentity?.identity_id) {
-        // Auto-save to module config
         const currentConfig = getModuleIdentityConfig();
         saveModuleIdentityConfig({
           ...currentConfig,
           payoutsIdentityId: createdIdentity.identity_id,
         });
-        
         toast.success('Business registered successfully');
         setShowOnboarding(false);
       }
-      
       return createdIdentity;
     } catch (error) {
       toast.error('Failed to register business');
-      throw error; // Re-throw to stop the chain
+      throw error;
     }
   };
 
@@ -92,7 +109,25 @@ const PayoutsDashboard: React.FC = () => {
     }
   };
 
-  // If loading identities, show loading state
+  const handleConvert = async (data: ConvertAssetRequest) => {
+    try {
+      await convertAssets.mutateAsync(data);
+      toast.success('Conversion initiated successfully');
+    } catch (error) {
+      toast.error('Failed to process conversion');
+    }
+  };
+
+  const handleCreateDestination = async (data: CreateCryptoDestinationAddressRequest) => {
+    try {
+      await createDestinationAddress.mutateAsync(data);
+      toast.success('Destination wallet registered');
+      setShowCreateDestination(false);
+    } catch (error) {
+      toast.error('Failed to register destination');
+    }
+  };
+
   if (loadingIdentities) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -106,7 +141,7 @@ const PayoutsDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Onboarding Banner - Non-blocking */}
+      {/* Onboarding Banner */}
       {needsOnboarding && (
         <div className="rounded-xl bg-gradient-to-r from-module-payouts/10 via-module-payouts/5 to-transparent border border-module-payouts/30 p-4 flex items-center justify-between animate-fade-in">
           <div className="flex items-center gap-4">
@@ -128,8 +163,8 @@ const PayoutsDashboard: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Pay-outs Dashboard</h2>
-          <p className="text-muted-foreground">Manage fiat withdrawals and bank accounts</p>
+          <h2 className="text-2xl font-bold text-foreground">Payouts Dashboard</h2>
+          <p className="text-muted-foreground">On-ramp USD to stablecoin and pay out crypto</p>
         </div>
         <div className="flex items-center gap-3">
           <AccountSelector
@@ -149,7 +184,7 @@ const PayoutsDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Account Info Bar */}
+      {/* Institution Info Bar */}
       {institutionIdentity && (
         <div className="glass rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -159,190 +194,248 @@ const PayoutsDashboard: React.FC = () => {
             <div>
               <p className="font-medium text-foreground">{institutionIdentity.name}</p>
               <p className="text-sm text-muted-foreground">
-                {accounts.length} account{accounts.length !== 1 ? 's' : ''} • Status: {institutionIdentity.status}
+                {accounts.length} account{accounts.length !== 1 ? 's' : ''} • {destinations.length} destination{destinations.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Link to="/app/payouts/bank-accounts">
-              <Button variant="outline" size="sm" className="border-border">
-                <Building2 className="h-4 w-4 mr-2" />
-                Manage Banks
-              </Button>
-            </Link>
-            <Link to="/app/payouts/create">
+            <Button onClick={() => setShowFiatDeposit(true)} variant="outline" size="sm" className="border-border">
+              <DollarSign className="h-4 w-4 mr-2" />
+              Fund Account
+            </Button>
+            <Link to="/app/payouts/send">
               <Button size="sm" className="bg-module-payouts hover:bg-module-payouts/90">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Payout
+                <Send className="h-4 w-4 mr-2" />
+                Send Crypto
               </Button>
             </Link>
           </div>
         </div>
       )}
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Stats & Content */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Stats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Total Payouts"
-              value={loadingTransactions ? '...' : `$${payouts.reduce((sum, tx) => sum + parseFloat(tx.amount || '0'), 0).toLocaleString()}`}
-              change={payouts.filter(tx => tx.status === 'COMPLETED').length + ' completed'}
-              changeType="positive"
-              icon={ArrowUpFromLine}
-            />
-            <StatCard
-              title="Pending"
-              value={loadingTransactions ? '...' : payouts.filter(tx => tx.status === 'PENDING').length.toString()}
-              change={payouts.filter(tx => tx.status === 'PENDING').length + ' in progress'}
-              changeType="neutral"
-              icon={Clock}
-            />
-            <StatCard
-              title="Completed"
-              value={loadingTransactions ? '...' : payouts.filter(tx => tx.status === 'COMPLETED').length.toString()}
-              change="Recent transactions"
-              changeType="positive"
-              icon={CheckCircle2}
-            />
-            <StatCard
-              title="Bank Accounts"
-              value={loadingFiatAccounts ? '...' : fiatAccounts.length.toString()}
-              change={fiatAccounts.filter(a => a.status === 'verified').length + ' verified'}
-              changeType="neutral"
-              icon={Building2}
-            />
-          </div>
+      {/* Main Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="bg-secondary/50 p-1">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-module-payouts data-[state=active]:text-white">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="fiat-deposits" className="data-[state=active]:bg-module-payouts data-[state=active]:text-white">
+            Fiat Deposits
+          </TabsTrigger>
+          <TabsTrigger value="conversions" className="data-[state=active]:bg-module-payouts data-[state=active]:text-white">
+            Conversions
+          </TabsTrigger>
+          <TabsTrigger value="destinations" className="data-[state=active]:bg-module-payouts data-[state=active]:text-white">
+            Destinations
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Bank Accounts */}
-          <div className="glass rounded-xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-foreground">Registered Bank Accounts</h3>
-              {institutionIdentity && (
-                <Link to="/app/payouts/bank-accounts/new" className="text-sm text-module-payouts hover:underline">
-                  Add New
-                </Link>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Stats */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  title="Total Sent"
+                  value={loadingTransactions ? '...' : `$${payouts.reduce((sum: number, tx: Transaction) => sum + parseFloat(tx.amount || '0'), 0).toLocaleString()}`}
+                  change={`${payouts.filter((tx: Transaction) => tx.status === 'COMPLETED').length} completed`}
+                  changeType="positive"
+                  icon={Send}
+                />
+                <StatCard
+                  title="Pending"
+                  value={loadingTransactions ? '...' : payouts.filter((tx: Transaction) => tx.status === 'PENDING').length.toString()}
+                  change="awaiting"
+                  changeType="neutral"
+                  icon={Clock}
+                />
+                <StatCard
+                  title="Conversions"
+                  value={loadingTransactions ? '...' : conversions.length.toString()}
+                  change="USD to stablecoin"
+                  changeType="positive"
+                  icon={ArrowRightLeft}
+                />
+                <StatCard
+                  title="Destinations"
+                  value={loadingDestinations ? '...' : destinations.length.toString()}
+                  change="wallets registered"
+                  changeType="neutral"
+                  icon={Wallet}
+                />
+              </div>
+
+              {/* Recent Activity */}
+              <div className="glass rounded-xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-semibold text-foreground">Recent Activity</h3>
+                </div>
+                {loadingTransactions ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : allTransactions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Send className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No transactions yet</p>
+                    <p className="text-sm">Fund your account and send crypto</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {allTransactions.slice(0, 5).map((tx: Transaction) => (
+                      <div key={tx.id} className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                            tx.transaction_type === 'CRYPTO_WITHDRAWAL' ? 'bg-warning/20' : 'bg-primary/20'
+                          }`}>
+                            {tx.transaction_type === 'CRYPTO_WITHDRAWAL' ? (
+                              <Send className="h-5 w-5 text-warning" />
+                            ) : (
+                              <ArrowRightLeft className="h-5 w-5 text-primary" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">{tx.amount} {tx.source_asset}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(tx.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <TransactionStatusBadge status={tx.status} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Balances */}
+            <div className="space-y-6">
+              <div className="glass rounded-xl p-6">
+                <h3 className="font-semibold text-foreground mb-4">Account Balances</h3>
+                {accounts.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No accounts yet</p>
+                  </div>
+                ) : (
+                  <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
+                )}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Fiat Deposits Tab */}
+        <TabsContent value="fiat-deposits" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="glass rounded-xl p-6">
+              <h3 className="font-semibold text-foreground mb-4">Generate Deposit Instructions</h3>
+              {selectedAccount ? (
+                <FiatDepositFlow 
+                  accountId={selectedAccount.id} 
+                  paxosAccountId={selectedAccount.paxos_account_id}
+                />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Select an account first</p>
+                </div>
               )}
             </div>
-            {loadingFiatAccounts ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : fiatAccounts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No bank accounts registered</p>
-                {institutionIdentity ? (
-                  <Link to="/app/payouts/bank-accounts/new" className="text-module-payouts hover:underline">
-                    Add your first bank account
-                  </Link>
-                ) : (
-                  <p className="text-sm">Complete registration first</p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {fiatAccounts.map((account) => (
-                  <div
-                    key={account.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payouts/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-module-payouts/10 flex items-center justify-center">
-                        <Building2 className="h-5 w-5 text-module-payouts" />
+            <div className="glass rounded-xl p-6">
+              <h3 className="font-semibold text-foreground mb-4">Active Deposit Instructions</h3>
+              {loadingInstructions ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : depositInstructions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No deposit instructions created yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {depositInstructions.map((inst: any) => (
+                    <div key={inst.id} className="p-4 rounded-lg bg-secondary/50 border border-border">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{inst.network}</span>
+                        <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success">{inst.status}</span>
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground">{account.network}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {account.paxos_fiat_account_id.slice(0, 12)}...
-                        </p>
-                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 font-mono">{inst.deposit_instructions_id?.slice(0, 20)}...</p>
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-success/20 text-success capitalize">
-                      {account.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+        </TabsContent>
 
-          {/* Recent Payouts */}
+        {/* Conversions Tab */}
+        <TabsContent value="conversions" className="mt-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="glass rounded-xl p-6">
+              <h3 className="font-semibold text-foreground mb-4">Convert Assets</h3>
+              <p className="text-sm text-muted-foreground mb-4">Convert USD to stablecoins before sending</p>
+              {selectedAccountId && balances.length > 0 ? (
+                <ManualConversionForm
+                  balances={balances}
+                  selectedAccountId={selectedAccountId}
+                  onSubmit={handleConvert}
+                  isLoading={convertAssets.isPending}
+                />
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>{!selectedAccountId ? 'Select an account first' : 'No balances available'}</p>
+                </div>
+              )}
+            </div>
+            <div className="glass rounded-xl p-6">
+              <h3 className="font-semibold text-foreground mb-4">Recent Conversions</h3>
+              {conversions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ArrowRightLeft className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No conversions yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {conversions.slice(0, 5).map((tx: Transaction) => (
+                    <div key={tx.id} className="p-4 rounded-lg bg-secondary/50 border border-border">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{tx.amount} {tx.source_asset} → {tx.destination_asset}</span>
+                        <TransactionStatusBadge status={tx.status} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{new Date(tx.created_at).toLocaleDateString()}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* Destinations Tab */}
+        <TabsContent value="destinations" className="mt-6">
           <div className="glass rounded-xl p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-foreground">Recent Payouts</h3>
-              <Link to="/app/payouts/history" className="text-sm text-module-payouts hover:underline">
-                View All
-              </Link>
+              <div>
+                <h3 className="font-semibold text-foreground">Destination Wallets</h3>
+                <p className="text-sm text-muted-foreground">External crypto wallets for payouts</p>
+              </div>
+              <Button onClick={() => setShowCreateDestination(true)} className="bg-module-payouts hover:bg-module-payouts/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Destination
+              </Button>
             </div>
-            {loadingTransactions ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : payouts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No payouts yet</p>
-                <p className="text-sm">Payouts will appear here</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {payouts.map((payout: Transaction) => (
-                  <div
-                    key={payout.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-secondary/50 border border-border hover:border-module-payouts/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-warning/20 flex items-center justify-center">
-                        <ArrowUpFromLine className="h-5 w-5 text-warning" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">${payout.amount} {payout.source_asset}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(payout.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <TransactionStatusBadge status={payout.status} />
-                  </div>
-                ))}
-              </div>
-            )}
+            <DestinationAddressList
+              destinations={destinations}
+              isLoading={loadingDestinations}
+            />
           </div>
-        </div>
+        </TabsContent>
+      </Tabs>
 
-        {/* Right Column - Account Balances */}
-        <div className="space-y-6">
-          <div className="glass rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">Account Balances</h3>
-            </div>
-            
-            {accounts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Wallet className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No accounts yet</p>
-                {institutionIdentity ? (
-                  <Button 
-                    onClick={() => setShowCreateAccount(true)} 
-                    variant="link" 
-                    className="text-module-payouts"
-                  >
-                    Create your first account
-                  </Button>
-                ) : (
-                  <p className="text-sm">Complete registration first</p>
-                )}
-              </div>
-            ) : (
-              <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Onboarding Dialog - Dismissible */}
+      {/* Dialogs */}
       <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
         <DialogContent className="max-w-3xl bg-card border-border">
           <DialogHeader>
@@ -357,7 +450,6 @@ const PayoutsDashboard: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Create Account Dialog */}
       <Dialog open={showCreateAccount} onOpenChange={setShowCreateAccount}>
         <DialogContent className="bg-card border-border">
           <DialogHeader>
@@ -369,6 +461,36 @@ const PayoutsDashboard: React.FC = () => {
             isLoading={createAccount.isPending}
             module="PAY_OUTS"
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateDestination} onOpenChange={setShowCreateDestination}>
+        <DialogContent className="max-w-2xl bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Register Destination Wallet</DialogTitle>
+          </DialogHeader>
+          <CreateDestinationAddressForm
+            onSubmit={handleCreateDestination}
+            isLoading={createDestinationAddress.isPending}
+            onCancel={() => setShowCreateDestination(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showFiatDeposit} onOpenChange={setShowFiatDeposit}>
+        <DialogContent className="max-w-lg bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Fund Account</DialogTitle>
+          </DialogHeader>
+          {selectedAccount ? (
+            <FiatDepositFlow 
+              accountId={selectedAccount.id} 
+              paxosAccountId={selectedAccount.paxos_account_id}
+              onSuccess={() => setShowFiatDeposit(false)}
+            />
+          ) : (
+            <p className="text-muted-foreground">Select an account first</p>
+          )}
         </DialogContent>
       </Dialog>
     </div>

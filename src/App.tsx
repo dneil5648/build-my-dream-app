@@ -28,6 +28,7 @@ import TreasuryDeposit from "./pages/treasury/TreasuryDeposit";
 import TreasuryWithdraw from "./pages/treasury/TreasuryWithdraw";
 import PayoutsDashboard from "./pages/payouts/PayoutsDashboard";
 import CreatePayout from "./pages/payouts/CreatePayout";
+import SendCrypto from "./pages/payouts/SendCrypto";
 import WhiteLabelWallet from "./pages/whitelabel/WhiteLabelWallet";
 import WhiteLabelReceive from "./pages/whitelabel/WhiteLabelReceive";
 import WhiteLabelSend from "./pages/whitelabel/WhiteLabelSend";
@@ -87,6 +88,7 @@ const App = () => (
                 <Route path="payouts" element={<PayoutsDashboard />} />
                 <Route path="payouts/dashboard" element={<PayoutsDashboard />} />
                 <Route path="payouts/create" element={<CreatePayout />} />
+                <Route path="payouts/send" element={<SendCrypto />} />
                 <Route path="payouts/bank-accounts" element={<PayoutsDashboard />} />
                 <Route path="payouts/bank-accounts/new" element={<CreatePayout />} />
                 <Route path="payouts/history" element={<PayoutsDashboard />} />
