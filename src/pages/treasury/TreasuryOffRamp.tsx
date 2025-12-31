@@ -84,7 +84,7 @@ const TreasuryOffRamp: React.FC = () => {
         account_id: selectedAccountId,
         source_asset: asset,
         destination_asset: 'USD',
-        paxos_fiat_account_id: selectedFiatAccount.paxos_fiat_account_id,
+        fiat_account_id: selectedFiatAccount.paxos_fiat_account_id,
         amount,
       });
 
@@ -180,9 +180,9 @@ const TreasuryOffRamp: React.FC = () => {
                       <SelectItem key={account.id} value={account.id}>
                         <div className="flex items-center gap-2">
                           <Landmark className="h-4 w-4 text-muted-foreground" />
-                          <span>{account.fiat_account_owner_name || 'Bank Account'}</span>
+                          <span>{account.description || account.bank_name || 'Bank Account'}</span>
                           <span className="text-xs text-muted-foreground">
-                            (...{account.fiat_account_number?.slice(-4) || '****'})
+                            (...{account.wire_account_number?.slice(-4) || '****'})
                           </span>
                         </div>
                       </SelectItem>
@@ -194,7 +194,7 @@ const TreasuryOffRamp: React.FC = () => {
                 </Select>
                 {selectedFiatAccount && (
                   <p className="text-xs text-muted-foreground">
-                    {selectedFiatAccount.fiat_network} • {selectedFiatAccount.routing_number_type}
+                    {selectedFiatAccount.network} • {selectedFiatAccount.routing_number || 'N/A'}
                   </p>
                 )}
               </div>
@@ -301,7 +301,7 @@ const TreasuryOffRamp: React.FC = () => {
             <DialogTitle>Register Bank Account</DialogTitle>
           </DialogHeader>
           <CreateFiatAccountForm
-            identities={institutionIdentities}
+            accounts={accounts}
             onSubmit={handleRegisterFiatAccount}
             isLoading={registerFiatAccount.isPending}
           />
