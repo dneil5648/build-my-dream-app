@@ -163,6 +163,7 @@ const WhiteLabelWallet: React.FC = () => {
             balances={balances} 
             isLoading={loadingBalances}
             emptyMessage="No assets found"
+            assetMappings={whiteLabelConfig?.assetMappings}
           />
         </div>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette, Building2, ArrowDownToLine, ArrowUpFromLine, UserCheck, User } from 'lucide-react';
+import { Settings, CheckCircle, XCircle, RefreshCw, Server, Plus, Wallet, Trash2, Palette, Building2, ArrowDownToLine, ArrowUpFromLine, UserCheck, User, Upload, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -111,6 +111,7 @@ export interface AssetMapping {
   assetId: string;
   customName: string;
   iconColor?: string;
+  customIcon?: string; // Base64 encoded custom icon
 }
 
 export interface WhiteLabelConfig {
@@ -190,6 +191,7 @@ const ConfigPage: React.FC = () => {
   const [newAssetId, setNewAssetId] = useState('');
   const [newCustomName, setNewCustomName] = useState('');
   const [newIconColor, setNewIconColor] = useState('#6366f1');
+  const [newCustomIcon, setNewCustomIcon] = useState<string | null>(null);
 
   // Module Identity config state
   const [moduleIdentityConfig, setModuleIdentityConfig] = useState<ModuleIdentityConfig>({
@@ -293,6 +295,27 @@ const ConfigPage: React.FC = () => {
   };
 
   // White Label handlers
+  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+    
+    if (file.size > 100 * 1024) { // 100KB limit for icons
+      toast.error('Icon must be less than 100KB');
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setNewCustomIcon(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleAddAssetMapping = () => {
     if (!newAssetId || !newCustomName.trim()) {
       toast.error('Please select an asset and provide a custom name');
@@ -307,12 +330,14 @@ const ConfigPage: React.FC = () => {
       assetMappings: [...prev.assetMappings, { 
         assetId: newAssetId, 
         customName: newCustomName.trim(),
-        iconColor: newIconColor 
+        iconColor: newIconColor,
+        customIcon: newCustomIcon || undefined
       }]
     }));
     setNewAssetId('');
     setNewCustomName('');
     setNewIconColor('#6366f1');
+    setNewCustomIcon(null);
   };
 
   const handleRemoveAssetMapping = (assetId: string) => {
@@ -930,14 +955,14 @@ const ConfigPage: React.FC = () => {
             </div>
 
             {/* Add New Mapping */}
-            <div className="grid md:grid-cols-4 gap-4 mb-6 p-4 bg-secondary/50 rounded-lg">
+            <div className="grid md:grid-cols-5 gap-4 mb-6 p-4 bg-secondary/50 rounded-lg">
               <div className="space-y-2">
                 <Label>Asset</Label>
                 <Select value={newAssetId} onValueChange={setNewAssetId}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue placeholder="Select asset" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-60">
                     {AVAILABLE_ASSETS.filter(a => !whiteLabelConfig.assetMappings.some(m => m.assetId === a.id)).map(asset => (
                       <SelectItem key={asset.id} value={asset.id}>
                         {asset.id} - {asset.name}
@@ -972,10 +997,42 @@ const ConfigPage: React.FC = () => {
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>Custom Icon</Label>
+                <div className="flex gap-2 items-center">
+                  <label className="flex-1 h-10 px-3 bg-secondary border border-border rounded-md flex items-center justify-center gap-2 cursor-pointer hover:bg-secondary/80 transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleIconUpload}
+                      className="hidden"
+                    />
+                    {newCustomIcon ? (
+                      <img src={newCustomIcon} alt="Custom icon" className="h-6 w-6 rounded object-cover" />
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Upload</span>
+                      </>
+                    )}
+                  </label>
+                  {newCustomIcon && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setNewCustomIcon(null)}
+                      className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Optional. Max 100KB.</p>
+              </div>
               <div className="flex items-end">
                 <Button onClick={handleAddAssetMapping} className="w-full bg-primary hover:bg-primary/90">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Mapping
+                  Add
                 </Button>
               </div>
             </div>
@@ -990,16 +1047,25 @@ const ConfigPage: React.FC = () => {
                     return (
                       <div key={mapping.assetId} className="flex items-center justify-between p-4 bg-secondary/30">
                         <div className="flex items-center gap-4">
-                          <div 
-                            className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                            style={{ backgroundColor: mapping.iconColor || '#6366f1' }}
-                          >
-                            {mapping.customName.slice(0, 2).toUpperCase()}
-                          </div>
+                          {mapping.customIcon ? (
+                            <img 
+                              src={mapping.customIcon} 
+                              alt={mapping.customName}
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div 
+                              className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                              style={{ backgroundColor: mapping.iconColor || '#6366f1' }}
+                            >
+                              {mapping.customName.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
                           <div>
                             <p className="font-medium text-foreground">{mapping.customName}</p>
                             <p className="text-sm text-muted-foreground">
                               {mapping.assetId} ({originalAsset?.name})
+                              {mapping.customIcon && <span className="ml-2 text-xs text-primary">• Custom icon</span>}
                             </p>
                           </div>
                         </div>

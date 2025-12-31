@@ -13,11 +13,19 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
+export interface AssetMapping {
+  assetId: string;
+  customName: string;
+  iconColor?: string;
+  customIcon?: string;
+}
+
 interface BalancesTableProps {
   balances: AccountBalanceItem[];
   isLoading?: boolean;
   showZeroBalances?: boolean;
   emptyMessage?: string;
+  assetMappings?: AssetMapping[];
 }
 
 export const BalancesTable: React.FC<BalancesTableProps> = ({
@@ -25,6 +33,7 @@ export const BalancesTable: React.FC<BalancesTableProps> = ({
   isLoading,
   showZeroBalances: initialShowZero = false,
   emptyMessage = 'No balances found',
+  assetMappings = [],
 }) => {
   const [showZeroBalances, setShowZeroBalances] = useState(initialShowZero);
 
@@ -42,6 +51,16 @@ export const BalancesTable: React.FC<BalancesTableProps> = ({
       (b) => parseFloat(b.available) === 0 && parseFloat(b.trading) === 0
     );
   }, [balances]);
+
+  // Get asset display info from mappings
+  const getAssetInfo = (asset: string) => {
+    const mapping = assetMappings.find(m => m.assetId === asset);
+    return {
+      displayName: mapping?.customName || asset,
+      customIcon: mapping?.customIcon,
+      iconColor: mapping?.iconColor,
+    };
+  };
 
   if (isLoading) {
     return (
@@ -107,22 +126,40 @@ export const BalancesTable: React.FC<BalancesTableProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredBalances.map((balance) => (
-                <TableRow key={balance.asset} className="hover:bg-secondary/30">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <AssetIcon asset={balance.asset} size="sm" />
-                      <span className="font-medium">{balance.asset}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono">
-                    {parseFloat(balance.available).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground">
-                    {parseFloat(balance.trading).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredBalances.map((balance) => {
+                const assetInfo = getAssetInfo(balance.asset);
+                return (
+                  <TableRow key={balance.asset} className="hover:bg-secondary/30">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {assetInfo.customIcon ? (
+                          <img 
+                            src={assetInfo.customIcon} 
+                            alt={assetInfo.displayName}
+                            className="h-6 w-6 rounded-full object-cover"
+                          />
+                        ) : assetInfo.iconColor ? (
+                          <div 
+                            className="h-6 w-6 rounded-full flex items-center justify-center text-white font-bold text-xs"
+                            style={{ backgroundColor: assetInfo.iconColor }}
+                          >
+                            {assetInfo.displayName.slice(0, 2).toUpperCase()}
+                          </div>
+                        ) : (
+                          <AssetIcon asset={balance.asset} size="sm" />
+                        )}
+                        <span className="font-medium">{assetInfo.displayName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {parseFloat(balance.available).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
+                      {parseFloat(balance.trading).toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
