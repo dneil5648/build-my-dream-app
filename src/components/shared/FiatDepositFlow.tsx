@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, Copy, Check, Info, ArrowRight, DollarSign, Coins, Building2 } from 'lucide-react';
+import { Loader2, Copy, Check, Info, ArrowRight, DollarSign, Coins, Building2, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -7,14 +7,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { AssetIcon } from '@/components/shared/AssetIcon';
-import { useCreateDepositInstructions, useSandboxDeposit } from '@/hooks/useFiat';
+import { useCreateDepositInstructions, useSandboxDeposit, useDepositInstructions } from '@/hooks/useFiat';
 import { useCryptoDestinationAddresses } from '@/hooks/useCrypto';
 import { 
   CreateFiatDepositInstructionsRequest, 
   FiatNetwork, 
   AccountType,
   RoutingNumberType,
-  CryptoDestinationAddress 
+  CryptoDestinationAddress,
+  FiatDepositInstructions
 } from '@/api/types';
 
 // Stablecoins for conversion
@@ -49,7 +50,7 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
   paxosAccountId,
   onSuccess
 }) => {
-  const [step, setStep] = useState<'create' | 'instructions' | 'sandbox'>('create');
+  const [step, setStep] = useState<'create' | 'instructions' | 'fund'>('create');
   const [scenario, setScenario] = useState<DepositScenario>('hold_usd');
   const [network, setNetwork] = useState<FiatNetwork>('WIRE');
   const [accountType, setAccountType] = useState<AccountType>('CHECKING');
@@ -58,6 +59,9 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
   const [destinationAddressId, setDestinationAddressId] = useState('');
   const [instructions, setInstructions] = useState<DepositInstructionResult | null>(null);
   const [copied, setCopied] = useState(false);
+  
+  // Fund account state
+  const [selectedInstructionId, setSelectedInstructionId] = useState('');
   const [sandboxAmount, setSandboxAmount] = useState('1000.00');
 
   // Determine if routing_number_type is required based on network
@@ -65,10 +69,22 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
 
   const createInstructions = useCreateDepositInstructions();
   const sandboxDeposit = useSandboxDeposit();
+  
+  // Fetch existing deposit instructions for this account
+  const { data: existingInstructionsResponse, isLoading: loadingInstructions } = useDepositInstructions();
+  const existingInstructions = (existingInstructionsResponse?.data || []).filter(
+    (inst: FiatDepositInstructions) => inst.account_id === accountId && inst.status === 'active'
+  );
+
   const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses(
     { account_id: accountId }
   );
   const destinations = destinationsResponse?.data || [];
+  
+  // Get selected instruction details
+  const selectedInstruction = existingInstructions.find(
+    (inst: FiatDepositInstructions) => inst.deposit_instructions_id === selectedInstructionId
+  );
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -108,12 +124,15 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
     }
   };
 
-  const handleSandboxDeposit = async () => {
-    if (!instructions?.id) return;
+  const handleFundAccount = async () => {
+    if (!selectedInstructionId) {
+      toast.error('Please select a deposit instruction');
+      return;
+    }
 
     try {
       await sandboxDeposit.mutateAsync({
-        deposit_instruction_id: instructions.id,
+        deposit_instruction_id: selectedInstructionId,
         amount: sandboxAmount,
         asset: 'USD',
         account_number: '9876543210',
@@ -126,7 +145,7 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
         },
         routing_details: {
           routing_number_type: 'ABA',
-          routing_number: '123456789',
+          routing_number: '021000021',
           bank_name: 'Test Bank',
           bank_address: {
             country: 'US',
@@ -139,9 +158,10 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
       });
       toast.success('Sandbox deposit completed! Check your balance.');
       onSuccess?.();
-      // Reset to start
+      // Reset state
       setStep('create');
-      setInstructions(null);
+      setSelectedInstructionId('');
+      setSandboxAmount('1000.00');
     } catch (error) {
       toast.error('Failed to simulate deposit');
     }
@@ -451,34 +471,93 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
               Create Another
             </Button>
             <Button 
-              onClick={() => setStep('sandbox')}
+              onClick={() => setStep('fund')}
               className="flex-1 bg-success hover:bg-success/90"
             >
-              Test with Sandbox
+              Fund Account
             </Button>
           </div>
         </div>
       )}
 
-      {step === 'sandbox' && (
+      {step === 'fund' && (
         <div className="space-y-6">
           <div className="text-center py-4">
             <div className="h-12 w-12 rounded-full bg-warning/20 flex items-center justify-center mx-auto mb-3">
               <Building2 className="h-6 w-6 text-warning" />
             </div>
-            <h3 className="font-semibold text-foreground">Sandbox Deposit</h3>
+            <h3 className="font-semibold text-foreground">Fund Account (Sandbox)</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Simulate a wire transfer for testing
+              Select deposit instructions and simulate a deposit
             </p>
           </div>
 
           <div className="p-4 rounded-lg bg-warning/10 border border-warning/20 text-sm">
-            <p className="text-warning font-medium">⚠️ Sandbox Mode</p>
+            <p className="text-warning font-medium">Sandbox Mode</p>
             <p className="text-muted-foreground mt-1">
               This simulates a bank transfer. No real money is moved.
             </p>
           </div>
 
+          {/* Select Deposit Instructions */}
+          <div className="space-y-2">
+            <Label>Select Deposit Instructions</Label>
+            {loadingInstructions ? (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm py-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading instructions...
+              </div>
+            ) : existingInstructions.length === 0 ? (
+              <div className="p-4 rounded-lg bg-muted/50 text-center">
+                <p className="text-sm text-muted-foreground">No deposit instructions found.</p>
+                <Button 
+                  variant="link" 
+                  onClick={() => setStep('create')}
+                  className="text-primary mt-1"
+                >
+                  Create deposit instructions first
+                </Button>
+              </div>
+            ) : (
+              <Select value={selectedInstructionId} onValueChange={setSelectedInstructionId}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select deposit instruction" />
+                </SelectTrigger>
+                <SelectContent>
+                  {existingInstructions.map((inst: FiatDepositInstructions) => (
+                    <SelectItem key={inst.deposit_instructions_id} value={inst.deposit_instructions_id}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{inst.network} - {inst.instruction_type}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {inst.deposit_instructions_id?.slice(0, 16)}...
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Selected Instruction Details */}
+          {selectedInstruction && (
+            <div className="p-4 rounded-lg bg-muted/50 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Network</span>
+                <span className="font-medium text-foreground">{selectedInstruction.network}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <span className="font-medium text-foreground">{selectedInstruction.instruction_type}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status</span>
+                <span className="font-medium text-success">{selectedInstruction.status}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Amount */}
           <div className="space-y-2">
             <Label>Amount to Deposit</Label>
             <div className="relative">
@@ -496,14 +575,14 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
           <div className="flex gap-3">
             <Button 
               variant="outline" 
-              onClick={() => setStep('instructions')}
+              onClick={() => setStep('create')}
               className="flex-1"
             >
               Back
             </Button>
             <Button 
-              onClick={handleSandboxDeposit}
-              disabled={sandboxDeposit.isPending || !sandboxAmount}
+              onClick={handleFundAccount}
+              disabled={sandboxDeposit.isPending || !sandboxAmount || !selectedInstructionId}
               className="flex-1 bg-success hover:bg-success/90"
             >
               {sandboxDeposit.isPending ? (
