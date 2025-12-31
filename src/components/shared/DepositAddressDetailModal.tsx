@@ -2,13 +2,15 @@ import React from 'react';
 import { Bitcoin, Copy, ExternalLink, ArrowRight, Building2, Wallet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { CryptoAddress } from '@/api/types';
+import { CryptoAddress, CryptoDestinationAddress, FiatAccount } from '@/api/types';
 import { toast } from 'sonner';
 
 interface DepositAddressDetailModalProps {
   address: CryptoAddress | null;
   isOpen: boolean;
   onClose: () => void;
+  destinationAddresses?: CryptoDestinationAddress[];
+  fiatAccounts?: FiatAccount[];
 }
 
 const getNetworkLabel = (network: string): string => {
@@ -18,6 +20,8 @@ const getNetworkLabel = (network: string): string => {
     STELLAR: 'Stellar',
     BASE: 'Base',
     POLYGON: 'Polygon',
+    BITCOIN: 'Bitcoin',
+    LITECOIN: 'Litecoin',
   };
   return labels[network] || network;
 };
@@ -29,6 +33,8 @@ const getExplorerUrl = (network: string, address: string): string | null => {
     STELLAR: `https://stellarchain.io/accounts/${address}`,
     BASE: `https://basescan.org/address/${address}`,
     POLYGON: `https://polygonscan.com/address/${address}`,
+    BITCOIN: `https://blockstream.info/address/${address}`,
+    LITECOIN: `https://litecoinspace.org/address/${address}`,
   };
   return explorers[network] || null;
 };
@@ -47,6 +53,8 @@ export const DepositAddressDetailModal: React.FC<DepositAddressDetailModalProps>
   address,
   isOpen,
   onClose,
+  destinationAddresses = [],
+  fiatAccounts = [],
 }) => {
   if (!address) return null;
 
@@ -57,7 +65,22 @@ export const DepositAddressDetailModal: React.FC<DepositAddressDetailModalProps>
 
   const explorerUrl = getExplorerUrl(address.network, address.wallet_address);
   const hasConversion = address.source_asset !== address.destination_asset;
-  const hasDestination = address.fiat_account_id || address.crypto_destination_id;
+  
+  // Find the linked destination address
+  const linkedDestination = address.crypto_destination_id
+    ? destinationAddresses.find(
+        (d) => d.paxos_crypto_destination_id === address.crypto_destination_id
+      )
+    : null;
+
+  // Find the linked fiat account
+  const linkedFiatAccount = address.fiat_account_id
+    ? fiatAccounts.find((f) => f.paxos_fiat_account_id === address.fiat_account_id)
+    : null;
+
+  const destinationExplorerUrl = linkedDestination
+    ? getExplorerUrl(linkedDestination.crypto_network, linkedDestination.address)
+    : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -134,20 +157,79 @@ export const DepositAddressDetailModal: React.FC<DepositAddressDetailModalProps>
 
               {/* Destination */}
               <div className="text-center p-4 rounded-lg bg-background border border-success/50 min-w-[120px]">
-                {address.fiat_account_id ? (
+                {linkedFiatAccount ? (
                   <Building2 className="h-8 w-8 mx-auto mb-2 text-success" />
-                ) : address.crypto_destination_id ? (
+                ) : linkedDestination ? (
                   <Wallet className="h-8 w-8 mx-auto mb-2 text-success" />
                 ) : (
                   <Wallet className="h-8 w-8 mx-auto mb-2 text-success" />
                 )}
                 <p className="text-sm font-medium text-foreground">
-                  {getDestinationTypeLabel(address.destination_type)}
+                  {linkedDestination
+                    ? linkedDestination.nickname || linkedDestination.label || 'External Wallet'
+                    : linkedFiatAccount
+                    ? linkedFiatAccount.description || 'Bank Account'
+                    : getDestinationTypeLabel(address.destination_type)}
                 </p>
                 <p className="text-xs text-muted-foreground">Destination</p>
               </div>
             </div>
           </div>
+
+          {/* Linked Destination Address Details */}
+          {linkedDestination && (
+            <div className="p-4 rounded-lg bg-success/5 border border-success/30">
+              <p className="text-xs text-muted-foreground mb-2">Destination Wallet Address</p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-sm text-foreground break-all">
+                    {linkedDestination.address}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {getNetworkLabel(linkedDestination.crypto_network)} • {linkedDestination.status}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => copyToClipboard(linkedDestination.address)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  {destinationExplorerUrl && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => window.open(destinationExplorerUrl, '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Linked Fiat Account Details */}
+          {linkedFiatAccount && (
+            <div className="p-4 rounded-lg bg-success/5 border border-success/30">
+              <p className="text-xs text-muted-foreground mb-2">Destination Bank Account</p>
+              <div className="flex items-center gap-3">
+                <Building2 className="h-5 w-5 text-success shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {linkedFiatAccount.description || linkedFiatAccount.network}
+                  </p>
+                  {linkedFiatAccount.wire_account_number && (
+                    <p className="text-xs text-muted-foreground">
+                      Account ending in ****{linkedFiatAccount.wire_account_number.slice(-4)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Details Grid */}
           <div className="grid md:grid-cols-2 gap-4">
