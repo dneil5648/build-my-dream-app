@@ -94,10 +94,9 @@ const App = () => (
                 {/* White Label */}
                 <Route path="white-label" element={<WhiteLabelWallet />} />
                 <Route path="white-label/wallet" element={<WhiteLabelWallet />} />
-                <Route path="white-label/receive" element={<WhiteLabelWallet />} />
-                <Route path="white-label/send" element={<WhiteLabelWallet />} />
-                <Route path="white-label/swap" element={<WhiteLabelWallet />} />
-                <Route path="white-label/activity" element={<WhiteLabelWallet />} />
+                <Route path="white-label/receive" element={<WhiteLabelReceive />} />
+                <Route path="white-label/send" element={<WhiteLabelSend />} />
+                <Route path="white-label/activity" element={<WhiteLabelActivity />} />
               </Route>
 
               {/* 404 */}

@@ -14,9 +14,9 @@ import { CryptoNetwork, AccountBalanceItem } from '@/api/types';
 import { getWhiteLabelConfig, WhiteLabelConfig } from '@/pages/config/ConfigPage';
 
 // Stablecoins only
-const SUPPORTED_STABLECOINS = ['USDC', 'USDT', 'USDP', 'PYUSD', 'USDG', 'DAI'];
+const SUPPORTED_STABLECOINS = ['USDC', 'USDT', 'USDP', 'PYUSD', 'USDG', 'DAI', 'BUSD'];
 
-// Network options per asset
+// Network options per asset - complete list for stablecoin withdrawals
 const NETWORK_OPTIONS: Record<string, { value: string; label: string; addressHint: string }[]> = {
   USDC: [
     { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
@@ -24,11 +24,18 @@ const NETWORK_OPTIONS: Record<string, { value: string; label: string; addressHin
     { value: 'POLYGON', label: 'Polygon', addressHint: 'Starts with 0x' },
     { value: 'BASE', label: 'Base', addressHint: 'Starts with 0x' },
     { value: 'STELLAR', label: 'Stellar', addressHint: 'Starts with G' },
+    { value: 'ARBITRUM', label: 'Arbitrum', addressHint: 'Starts with 0x' },
+    { value: 'OPTIMISM', label: 'Optimism', addressHint: 'Starts with 0x' },
+    { value: 'AVALANCHE', label: 'Avalanche', addressHint: 'Starts with 0x' },
   ],
   USDT: [
     { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
     { value: 'SOLANA', label: 'Solana', addressHint: 'Base58 address' },
     { value: 'POLYGON', label: 'Polygon', addressHint: 'Starts with 0x' },
+    { value: 'ARBITRUM', label: 'Arbitrum', addressHint: 'Starts with 0x' },
+    { value: 'OPTIMISM', label: 'Optimism', addressHint: 'Starts with 0x' },
+    { value: 'AVALANCHE', label: 'Avalanche', addressHint: 'Starts with 0x' },
+    { value: 'TRON', label: 'Tron', addressHint: 'Starts with T' },
   ],
   USDP: [
     { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
@@ -39,20 +46,29 @@ const NETWORK_OPTIONS: Record<string, { value: string; label: string; addressHin
   ],
   USDG: [
     { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
+    { value: 'SOLANA', label: 'Solana', addressHint: 'Base58 address' },
   ],
   DAI: [
     { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
     { value: 'POLYGON', label: 'Polygon', addressHint: 'Starts with 0x' },
+    { value: 'ARBITRUM', label: 'Arbitrum', addressHint: 'Starts with 0x' },
+    { value: 'OPTIMISM', label: 'Optimism', addressHint: 'Starts with 0x' },
+    { value: 'BASE', label: 'Base', addressHint: 'Starts with 0x' },
+  ],
+  BUSD: [
+    { value: 'ETHEREUM', label: 'Ethereum', addressHint: 'Starts with 0x' },
+    { value: 'BSC', label: 'BNB Smart Chain', addressHint: 'Starts with 0x' },
   ],
 };
 
-// Simple address format validation
+// Address format validation with complete network support
 const validateAddress = (address: string, network: string): { valid: boolean; message?: string } => {
   if (!address) return { valid: false, message: 'Address is required' };
   
-  if (['ETHEREUM', 'POLYGON', 'BASE'].includes(network)) {
+  // EVM-compatible chains (Ethereum, Polygon, Base, Arbitrum, Optimism, Avalanche, BSC)
+  if (['ETHEREUM', 'POLYGON', 'BASE', 'ARBITRUM', 'OPTIMISM', 'AVALANCHE', 'BSC'].includes(network)) {
     if (!address.startsWith('0x') || address.length !== 42) {
-      return { valid: false, message: 'Invalid Ethereum-style address. Must start with 0x and be 42 characters.' };
+      return { valid: false, message: 'Invalid address. Must start with 0x and be 42 characters.' };
     }
   } else if (network === 'SOLANA') {
     if (address.length < 32 || address.length > 44) {
@@ -61,6 +77,10 @@ const validateAddress = (address: string, network: string): { valid: boolean; me
   } else if (network === 'STELLAR') {
     if (!address.startsWith('G') || address.length !== 56) {
       return { valid: false, message: 'Invalid Stellar address. Must start with G and be 56 characters.' };
+    }
+  } else if (network === 'TRON') {
+    if (!address.startsWith('T') || address.length !== 34) {
+      return { valid: false, message: 'Invalid Tron address. Must start with T and be 34 characters.' };
     }
   }
   

@@ -20,7 +20,7 @@ const SUPPORTED_STABLECOINS = [
   { value: 'DAI', label: 'Dai', symbol: 'DAI' },
 ];
 
-// Network options per asset
+// Network options per asset - complete list for stablecoin deposits
 const NETWORK_OPTIONS: Record<string, { value: string; label: string; chain: string }[]> = {
   USDC: [
     { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
@@ -28,11 +28,18 @@ const NETWORK_OPTIONS: Record<string, { value: string; label: string; chain: str
     { value: 'POLYGON', label: 'Polygon', chain: 'Polygon' },
     { value: 'BASE', label: 'Base', chain: 'Base' },
     { value: 'STELLAR', label: 'Stellar', chain: 'Stellar' },
+    { value: 'ARBITRUM', label: 'Arbitrum', chain: 'Arbitrum' },
+    { value: 'OPTIMISM', label: 'Optimism', chain: 'Optimism' },
+    { value: 'AVALANCHE', label: 'Avalanche', chain: 'C-Chain' },
   ],
   USDT: [
     { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
     { value: 'SOLANA', label: 'Solana', chain: 'SPL' },
     { value: 'POLYGON', label: 'Polygon', chain: 'Polygon' },
+    { value: 'ARBITRUM', label: 'Arbitrum', chain: 'Arbitrum' },
+    { value: 'OPTIMISM', label: 'Optimism', chain: 'Optimism' },
+    { value: 'AVALANCHE', label: 'Avalanche', chain: 'C-Chain' },
+    { value: 'TRON', label: 'Tron', chain: 'TRC-20' },
   ],
   USDP: [
     { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
@@ -43,10 +50,18 @@ const NETWORK_OPTIONS: Record<string, { value: string; label: string; chain: str
   ],
   USDG: [
     { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
+    { value: 'SOLANA', label: 'Solana', chain: 'SPL' },
   ],
   DAI: [
     { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
     { value: 'POLYGON', label: 'Polygon', chain: 'Polygon' },
+    { value: 'ARBITRUM', label: 'Arbitrum', chain: 'Arbitrum' },
+    { value: 'OPTIMISM', label: 'Optimism', chain: 'Optimism' },
+    { value: 'BASE', label: 'Base', chain: 'Base' },
+  ],
+  BUSD: [
+    { value: 'ETHEREUM', label: 'Ethereum', chain: 'ERC-20' },
+    { value: 'BSC', label: 'BNB Smart Chain', chain: 'BEP-20' },
   ],
 };
 
