@@ -264,8 +264,9 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
         account_request: {
           account: {
             identity_id: identityIdForWallet || '',
-            nickname: walletName || undefined,
+            nickname: walletName.trim() || undefined,
           },
+          description: `${walletType === 'business' ? 'Business' : 'Personal'} wallet`,
         },
         module,
       });
@@ -277,7 +278,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
   const canProceed = (): boolean => {
     switch (step) {
       case 'wallet-type':
-        return walletType !== null;
+        return walletType !== null && !!walletName.trim();
       case 'personal-info':
         if (useExistingIndividual) return !!selectedExistingId;
         // Only last_name required per API
