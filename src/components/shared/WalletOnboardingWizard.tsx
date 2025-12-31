@@ -264,11 +264,11 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
         account_request: {
           account: {
             identity_id: identityIdForWallet || '',
-            nickname: walletName.trim() || undefined,
+            description: `${walletType === 'business' ? 'Business' : 'Personal'} wallet`,
           },
-          description: `${walletType === 'business' ? 'Business' : 'Personal'} wallet`,
         },
         module,
+        nickname: walletName.trim() || undefined,
       });
     } catch (error) {
       throw error;

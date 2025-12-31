@@ -276,19 +276,19 @@ export interface PaxosIdentity {
 // Inner account object within request
 export interface AccountInnerPayload {
   identity_id: string;
-  nickname?: string;
+  description?: string;
 }
 
 // Account request payload with nested account object
 export interface AccountRequestPayload {
   account: AccountInnerPayload;
-  description?: string;
 }
 
 // Complete Create Account Request with module wrapper
 export interface CreateAccountRequest {
   account_request: AccountRequestPayload;
   module: ModuleName;
+  nickname?: string;
 }
 
 export interface PaxosAccount {
