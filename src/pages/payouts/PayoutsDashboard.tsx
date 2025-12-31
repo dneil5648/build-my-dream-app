@@ -104,6 +104,7 @@ const PayoutsDashboard: React.FC = () => {
         saveModuleIdentityConfig({
           ...currentConfig,
           payoutsIdentityId: createdIdentity.identity_id,
+          payoutsRequireNew: false, // Clear the require new flag after successful registration
         });
         toast.success('Business registered successfully');
         setShowOnboarding(false);

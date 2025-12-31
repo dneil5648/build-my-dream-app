@@ -150,6 +150,7 @@ const PayInsDashboard: React.FC = () => {
         saveModuleIdentityConfig({
           ...currentConfig,
           payinsIdentityId: createdIdentity.identity_id,
+          payinsRequireNew: false, // Clear the require new flag after successful registration
         });
         
         toast.success('Business registered successfully');
