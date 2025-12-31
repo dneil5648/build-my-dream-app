@@ -79,6 +79,9 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
   const [bizPurpose, setBizPurpose] = useState<string>('');
   const [bizSourceOfFunds, setBizSourceOfFunds] = useState<string>('');
 
+  // Wallet name (account nickname)
+  const [walletName, setWalletName] = useState('');
+
   // Use existing identity
   const [useExistingIndividual, setUseExistingIndividual] = useState(false);
   const [selectedExistingId, setSelectedExistingId] = useState<string>('');
@@ -261,6 +264,7 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
         account_request: {
           account: {
             identity_id: identityIdForWallet || '',
+            nickname: walletName || undefined,
           },
         },
         module,
@@ -337,15 +341,27 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
         {step === 'wallet-type' && (
           <div className="space-y-6">
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-foreground">Choose Wallet Type</h3>
-              <p className="text-muted-foreground mt-1">Select the type of wallet to create</p>
+              <h3 className="text-xl font-semibold text-foreground">Create Your Wallet</h3>
+              <p className="text-muted-foreground mt-1">Name your wallet and select the type</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Wallet Name *</Label>
+              <Input
+                value={walletName}
+                onChange={(e) => setWalletName(e.target.value)}
+                placeholder="e.g., My Savings, Business Treasury"
+                className="bg-secondary border-border"
+              />
+              <p className="text-xs text-muted-foreground">A memorable name to identify this wallet</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => { setWalletType('personal'); handleNext(); }}
-                className="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+                disabled={!walletName.trim()}
+                className="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-transparent"
               >
                 <User className="h-10 w-10 mb-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 <h4 className="text-lg font-semibold text-foreground">Personal Wallet</h4>
@@ -355,7 +371,8 @@ export const WalletOnboardingWizard: React.FC<WalletOnboardingWizardProps> = ({
               <button
                 type="button"
                 onClick={() => { setWalletType('business'); handleNext(); }}
-                className="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left group"
+                disabled={!walletName.trim()}
+                className="p-6 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-transparent"
               >
                 <Building2 className="h-10 w-10 mb-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 <h4 className="text-lg font-semibold text-foreground">Business Wallet</h4>
