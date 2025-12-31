@@ -313,11 +313,11 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
                     <SelectContent>
                       {destinations.length > 0 ? (
                         destinations.map((dest: CryptoDestinationAddress) => (
-                          <SelectItem key={dest.id} value={dest.paxos_crypto_destination_id || dest.id}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{dest.nickname || 'Unnamed'}</span>
-                              <span className="text-muted-foreground text-xs">
-                                {dest.address?.slice(0, 10)}...
+                          <SelectItem key={dest.id} value={dest.id}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{dest.nickname || dest.label || 'Unnamed'}</span>
+                              <span className="text-muted-foreground text-xs font-mono">
+                                ({dest.crypto_network}) {dest.address?.slice(0, 10)}...{dest.address?.slice(-8)}
                               </span>
                             </div>
                           </SelectItem>
