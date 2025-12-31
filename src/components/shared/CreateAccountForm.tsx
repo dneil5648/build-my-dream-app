@@ -21,6 +21,7 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
   module = 'TREASURY',
 }) => {
   const [identityId, setIdentityId] = useState('');
+  const [nickname, setNickname] = useState('');
   const [description, setDescription] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,6 +33,7 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
       account_request: {
         account: {
           identity_id: identityId,
+          nickname: nickname || undefined,
         },
         description: description || undefined,
       },
@@ -71,6 +73,19 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
       </div>
 
       <div className="space-y-2">
+        <Label>Nickname *</Label>
+        <Input
+          placeholder="Enter a nickname for this account"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          className="bg-secondary border-border"
+        />
+        <p className="text-xs text-muted-foreground">
+          A short, memorable name to identify this account
+        </p>
+      </div>
+
+      <div className="space-y-2">
         <Label>Description</Label>
         <Textarea
           placeholder="Enter account description (optional)"
@@ -86,7 +101,7 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
 
       <Button 
         type="submit" 
-        disabled={isLoading || !identityId} 
+        disabled={isLoading || !identityId || !nickname} 
         className="w-full bg-primary hover:bg-primary/90"
       >
         {isLoading ? (
