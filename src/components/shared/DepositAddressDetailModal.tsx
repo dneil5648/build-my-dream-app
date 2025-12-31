@@ -42,9 +42,9 @@ const getExplorerUrl = (network: string, address: string): string | null => {
 const getDestinationTypeLabel = (type?: string): string => {
   if (!type) return 'Account Balance';
   const labels: Record<string, string> = {
-    ACCOUNT: 'Account Balance',
-    FIAT_ACCOUNT: 'Fiat Bank Account',
-    CRYPTO_ADDRESS: 'External Wallet',
+    PROFILE: 'Account Balance',
+    FIAT: 'Fiat Bank Account',
+    CRYPTO: 'External Wallet',
   };
   return labels[type] || type;
 };
@@ -66,16 +66,20 @@ export const DepositAddressDetailModal: React.FC<DepositAddressDetailModalProps>
   const explorerUrl = getExplorerUrl(address.network, address.wallet_address);
   const hasConversion = address.source_asset !== address.destination_asset;
   
-  // Find the linked destination address
-  const linkedDestination = address.crypto_destination_id
+  // Find the linked destination address using the new field name
+  const linkedDestination = address.destination_crypto_address_id
     ? destinationAddresses.find(
-        (d) => d.paxos_crypto_destination_id === address.crypto_destination_id
+        (d) => d.id === address.destination_crypto_address_id || 
+               d.paxos_crypto_destination_id === address.destination_crypto_address_id
       )
     : null;
 
-  // Find the linked fiat account
-  const linkedFiatAccount = address.fiat_account_id
-    ? fiatAccounts.find((f) => f.paxos_fiat_account_id === address.fiat_account_id)
+  // Find the linked fiat account using the new field name
+  const linkedFiatAccount = address.destination_fiat_account_id
+    ? fiatAccounts.find(
+        (f) => f.id === address.destination_fiat_account_id || 
+               f.paxos_fiat_account_id === address.destination_fiat_account_id
+      )
     : null;
 
   const destinationExplorerUrl = linkedDestination

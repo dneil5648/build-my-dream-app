@@ -416,17 +416,17 @@ export interface CreateCryptoAddressRequest {
 
 export interface CryptoAddress {
   id: string;
-  crypto_address_id?: string;
-  network: string;
-  wallet_address: string;
-  paxos_account_id: string;
-  account_id: string;
   user_id: string;
-  source_asset?: string;
-  destination_asset?: string;
-  destination_type?: string;
-  fiat_account_id?: string;
-  crypto_destination_id?: string;
+  paxos_account_id: string;
+  wallet_address: string;
+  network: string;
+  source_asset: string;
+  destination_asset: string;
+  destination_type: 'CRYPTO' | 'FIAT' | 'PROFILE';
+  destination_crypto_address_id?: string | null;
+  destination_fiat_account_id?: string | null;
+  destination_profile_id?: string | null;
+  orchestration_rule_id?: string | null;
   created_at?: string;
   status?: string;
 }

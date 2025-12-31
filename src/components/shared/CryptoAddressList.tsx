@@ -90,7 +90,7 @@ export const CryptoAddressList: React.FC<CryptoAddressListProps> = ({
                 <p className="font-mono text-xs text-muted-foreground break-all">
                   {address.wallet_address}
                 </p>
-                {address.destination_asset && (
+                {address.source_asset !== address.destination_asset && address.destination_asset && (
                   <p className="text-xs text-primary mt-1">
                     Auto-converts to {address.destination_asset}
                   </p>
