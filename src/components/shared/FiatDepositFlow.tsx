@@ -132,12 +132,9 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
       payload.routing_number_type = routingNumberType;
     }
 
-    // Add crypto address for auto-send scenario (send actual address, not ID)
+    // Add crypto address for auto-send scenario
     if (scenario === 'convert_send' && destinationAddressId) {
-      const selectedDest = destinations.find((d: CryptoDestinationAddress) => d.id === destinationAddressId);
-      if (selectedDest?.address) {
-        payload.crypto_address_id = selectedDest.address;
-      }
+      payload.crypto_address_id = destinationAddressId;
     }
 
     try {
