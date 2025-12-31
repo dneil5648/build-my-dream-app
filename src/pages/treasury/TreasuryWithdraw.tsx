@@ -1,90 +1,106 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowUpFromLine, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowUpFromLine, AlertTriangle, Loader2, Wallet, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AssetIcon } from '@/components/shared/AssetIcon';
+import { AccountSelector } from '@/components/shared/AccountSelector';
+import { CreateDestinationAddressForm } from '@/components/shared/CreateDestinationAddressForm';
 import { toast } from 'sonner';
 import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
-import { useCalculateWithdrawalFee } from '@/hooks/useCrypto';
+import { useCryptoDestinationAddresses, useCreateCryptoDestinationAddress } from '@/hooks/useCrypto';
 import { useWithdrawAssets } from '@/hooks/useAssets';
-import { CryptoNetwork } from '@/api/types';
+import { CryptoNetwork, CryptoDestinationAddress, CreateCryptoDestinationAddressRequest, PaxosAccount } from '@/api/types';
+
+const NETWORKS = [
+  { value: 'ETHEREUM', label: 'Ethereum' },
+  { value: 'POLYGON', label: 'Polygon' },
+  { value: 'SOLANA', label: 'Solana' },
+  { value: 'BASE', label: 'Base' },
+  { value: 'BITCOIN', label: 'Bitcoin' },
+];
 
 const TreasuryWithdraw: React.FC = () => {
-  const [formData, setFormData] = useState({
-    account: '',
-    asset: '',
-    destination: '',
-    amount: '',
-    network: '',
-  });
-  const [fee, setFee] = useState<string | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [asset, setAsset] = useState('');
+  const [destinationId, setDestinationId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [network, setNetwork] = useState('');
+  const [showCreateDestination, setShowCreateDestination] = useState(false);
 
-  const { data: accountsResponse } = useAccounts();
-  const { data: balancesResponse } = useAccountBalances(formData.account);
-  const calculateFee = useCalculateWithdrawalFee();
+  const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'TREASURY' });
+  const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
+  const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses();
   const withdrawAssets = useWithdrawAssets();
+  const createDestinationAddress = useCreateCryptoDestinationAddress();
 
   const accounts = accountsResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
+  const destinations = destinationsResponse?.data || [];
 
-  const handleCalculateFee = async () => {
-    if (!formData.account || !formData.asset || !formData.network || !formData.amount || !formData.destination) {
-      return;
+  const selectedBalance = balances.find((b: { asset: string }) => b.asset === asset);
+  const selectedDestination = destinations.find((d: CryptoDestinationAddress) => d.id === destinationId);
+  
+  // Filter destinations by network
+  const filteredDestinations = network 
+    ? destinations.filter((d: CryptoDestinationAddress) => d.crypto_network === network)
+    : destinations;
+
+  // Auto-select first account
+  useEffect(() => {
+    if (accounts.length > 0 && !selectedAccountId) {
+      setSelectedAccountId(accounts[0].id);
     }
+  }, [accounts, selectedAccountId]);
 
+  const handleCreateDestination = async (data: CreateCryptoDestinationAddressRequest) => {
     try {
-      const result = await calculateFee.mutateAsync({
-        asset: formData.asset,
-        crypto_network: formData.network,
-        amount: formData.amount,
-        destination_address: formData.destination,
-      });
-
-      if (result.success && result.data) {
-        setFee(result.data.fee);
-      }
+      await createDestinationAddress.mutateAsync(data);
+      toast.success('Destination registered');
+      setShowCreateDestination(false);
     } catch (error) {
-      toast.error('Failed to calculate fee');
+      toast.error('Failed to register destination');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.account || !formData.asset || !formData.destination || !formData.amount || !formData.network) {
+    if (!selectedAccountId || !asset || !destinationId || !amount || !network) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (!selectedDestination) {
+      toast.error('Invalid destination selected');
       return;
     }
 
     try {
       await withdrawAssets.mutateAsync({
-        account_id: formData.account,
-        source_asset: formData.asset,
-        destination_asset: formData.asset, // Same asset (no conversion)
-        destination_address: formData.destination,
-        amount: formData.amount,
-        network: formData.network as CryptoNetwork,
+        account_id: selectedAccountId,
+        source_asset: asset,
+        destination_asset: asset,
+        destination_address: selectedDestination.address,
+        amount,
+        network: network as CryptoNetwork,
       });
       toast.success('Withdrawal initiated successfully');
-      // Reset form
-      setFormData({
-        account: formData.account,
-        asset: '',
-        destination: '',
-        amount: '',
-        network: '',
-      });
-      setFee(null);
+      setAsset('');
+      setDestinationId('');
+      setAmount('');
+      setNetwork('');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to initiate withdrawal');
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Link to="/app/treasury">
@@ -92,157 +108,181 @@ const TreasuryWithdraw: React.FC = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Payout to External Wallet</h2>
-          <p className="text-muted-foreground">Withdraw crypto to an external wallet address</p>
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold text-foreground">Crypto Payout</h2>
+          <p className="text-muted-foreground">Withdraw crypto to an external wallet</p>
         </div>
+        <AccountSelector
+          accounts={accounts}
+          selectedAccountId={selectedAccountId}
+          onSelectAccount={setSelectedAccountId}
+          isLoading={loadingAccounts}
+          label="Account"
+        />
       </div>
 
-      <form onSubmit={handleSubmit} className="glass rounded-xl p-8 space-y-6">
-        <div className="space-y-2">
-          <Label>Source Account</Label>
-          <Select value={formData.account} onValueChange={(v) => setFormData({...formData, account: v})}>
-            <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder="Select account" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.paxos_account_id}>
-                  {account.paxos_account_id}
-                </SelectItem>
-              ))}
-              {accounts.length === 0 && (
-                <SelectItem value="" disabled>No accounts available</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Asset</Label>
-          <Select
-            value={formData.asset}
-            onValueChange={(v) => { setFormData({...formData, asset: v, network: ''}); setFee(null); }}
-            disabled={!formData.account}
-          >
-            <SelectTrigger className="bg-secondary border-border">
-              <SelectValue placeholder={formData.account ? 'Select asset' : 'Select account first'} />
-            </SelectTrigger>
-            <SelectContent>
-              {balances.map((balance) => (
-                <SelectItem key={balance.asset} value={balance.asset}>
-                  <div className="flex items-center justify-between w-full gap-4">
-                    <div className="flex items-center gap-2">
-                      <AssetIcon asset={balance.asset} size="sm" />
-                      {balance.asset}
-                    </div>
-                    <span className="text-muted-foreground">{balance.available}</span>
-                  </div>
-                </SelectItem>
-              ))}
-              {balances.length === 0 && formData.account && (
-                <SelectItem value="" disabled>No assets available</SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Network Selection */}
-        {formData.asset && (
-          <div className="space-y-2">
-            <Label>Network</Label>
-            <Select value={formData.network} onValueChange={(v) => { setFormData({...formData, network: v}); handleCalculateFee(); }}>
-              <SelectTrigger className="bg-secondary border-border">
-                <SelectValue placeholder="Select network" />
-              </SelectTrigger>
-              <SelectContent>
-                {formData.asset === 'BTC' && (
-                  <>
-                    <SelectItem value="BITCOIN">Bitcoin Network</SelectItem>
-                    <SelectItem value="LIGHTNING">Lightning Network</SelectItem>
-                  </>
-                )}
-                {formData.asset === 'ETH' && (
-                  <>
-                    <SelectItem value="ETHEREUM">Ethereum Network</SelectItem>
-                    <SelectItem value="ARBITRUM">Arbitrum</SelectItem>
-                    <SelectItem value="OPTIMISM">Optimism</SelectItem>
-                  </>
-                )}
-                {formData.asset === 'USDC' && (
-                  <>
-                    <SelectItem value="ETHEREUM">Ethereum Network</SelectItem>
-                    <SelectItem value="POLYGON">Polygon Network</SelectItem>
-                    <SelectItem value="SOLANA">Solana</SelectItem>
-                    <SelectItem value="ARBITRUM">Arbitrum</SelectItem>
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label>Destination Address</Label>
-          <Input
-            placeholder="Enter wallet address"
-            value={formData.destination}
-            onChange={(e) => setFormData({...formData, destination: e.target.value})}
-            className="bg-secondary border-border font-mono"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Amount</Label>
-            {formData.asset && balances.find(b => b.asset === formData.asset) && (
-              <button
-                type="button"
-                className="text-xs text-primary hover:underline"
-                onClick={() => {
-                  const balance = balances.find(b => b.asset === formData.asset);
-                  if (balance) {
-                    setFormData({...formData, amount: balance.available});
-                  }
-                }}
+      <form onSubmit={handleSubmit}>
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle>Send Crypto</CardTitle>
+            <CardDescription>Withdraw to a registered destination address</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Asset Selection */}
+            <div className="space-y-2">
+              <Label>Asset</Label>
+              <Select
+                value={asset}
+                onValueChange={(v) => { setAsset(v); setNetwork(''); setDestinationId(''); }}
+                disabled={!selectedAccountId || loadingBalances}
               >
-                Max: {balances.find(b => b.asset === formData.asset)?.available}
-              </button>
-            )}
-          </div>
-          <Input
-            type="text"
-            placeholder="0.00"
-            value={formData.amount}
-            onChange={(e) => setFormData({...formData, amount: e.target.value})}
-            className="bg-secondary border-border"
-          />
-        </div>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder={selectedAccountId ? 'Select asset' : 'Select account first'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {balances.map((balance: { asset: string; available: string }) => (
+                    <SelectItem key={balance.asset} value={balance.asset}>
+                      <div className="flex items-center justify-between w-full gap-4">
+                        <div className="flex items-center gap-2">
+                          <AssetIcon asset={balance.asset} size="sm" />
+                          {balance.asset}
+                        </div>
+                        <span className="text-muted-foreground">{balance.available}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                  {balances.length === 0 && selectedAccountId && (
+                    <SelectItem value="" disabled>No assets available</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Fee Estimate */}
-        {fee && formData.network && (
-          <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-warning">Network Fee</p>
-                <p className="text-sm text-muted-foreground">
-                  Estimated fee: {fee} {formData.asset}
-                </p>
+            {/* Network Selection */}
+            <div className="space-y-2">
+              <Label>Network</Label>
+              <Select value={network} onValueChange={(v) => { setNetwork(v); setDestinationId(''); }}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select network" />
+                </SelectTrigger>
+                <SelectContent>
+                  {NETWORKS.map((n) => (
+                    <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Destination Selection */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Destination Wallet</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto py-1 px-2 text-xs text-module-treasury"
+                  onClick={() => setShowCreateDestination(true)}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add New
+                </Button>
+              </div>
+              <Select value={destinationId} onValueChange={setDestinationId}>
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Select destination" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredDestinations.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground text-center">
+                      No destinations registered{network ? ` for ${network}` : ''}
+                    </div>
+                  ) : (
+                    filteredDestinations.map((dest: CryptoDestinationAddress) => (
+                      <SelectItem key={dest.id} value={dest.id}>
+                        <div className="flex flex-col">
+                          <span>{dest.nickname || 'Unnamed'}</span>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {dest.address.slice(0, 10)}...{dest.address.slice(-8)}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Amount */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Amount</Label>
+                {asset && selectedBalance && (
+                  <button
+                    type="button"
+                    className="text-xs text-module-treasury hover:underline"
+                    onClick={() => setAmount(selectedBalance.available)}
+                  >
+                    Max: {selectedBalance.available}
+                  </button>
+                )}
+              </div>
+              <Input
+                type="text"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="bg-secondary border-border"
+              />
+            </div>
+
+            {/* Warning */}
+            <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-warning">Verify Before Sending</p>
+                  <p className="text-sm text-muted-foreground">
+                    Crypto transactions are irreversible. Always double-check the destination address.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
 
-        <Button
-          type="submit"
-          disabled={withdrawAssets.isPending || !formData.amount || !formData.destination || !formData.network}
-          className="w-full bg-warning hover:bg-warning/90 text-warning-foreground"
-        >
-          <ArrowUpFromLine className="h-4 w-4 mr-2" />
-          {withdrawAssets.isPending ? 'Processing...' : 'Withdraw'}
-        </Button>
+            <Button
+              type="submit"
+              disabled={withdrawAssets.isPending || !amount || !destinationId || !network || !asset}
+              className="w-full bg-module-treasury hover:bg-module-treasury/90"
+            >
+              {withdrawAssets.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <ArrowUpFromLine className="h-4 w-4 mr-2" />
+                  Send
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       </form>
+
+      {/* Create Destination Dialog */}
+      <Dialog open={showCreateDestination} onOpenChange={setShowCreateDestination}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Register Destination Wallet</DialogTitle>
+          </DialogHeader>
+          <CreateDestinationAddressForm
+            accounts={accounts}
+            onSubmit={handleCreateDestination}
+            isLoading={createDestinationAddress.isPending}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -26,6 +26,9 @@ import TreasuryDashboard from "./pages/treasury/TreasuryDashboard";
 import TreasuryConvert from "./pages/treasury/TreasuryConvert";
 import TreasuryDeposit from "./pages/treasury/TreasuryDeposit";
 import TreasuryWithdraw from "./pages/treasury/TreasuryWithdraw";
+import TreasuryPayments from "./pages/treasury/TreasuryPayments";
+import TreasuryTransfers from "./pages/treasury/TreasuryTransfers";
+import TreasuryOffRamp from "./pages/treasury/TreasuryOffRamp";
 import PayoutsDashboard from "./pages/payouts/PayoutsDashboard";
 import CreatePayout from "./pages/payouts/CreatePayout";
 import SendCrypto from "./pages/payouts/SendCrypto";
@@ -81,7 +84,9 @@ const App = () => (
                 <Route path="treasury/convert" element={<TreasuryConvert />} />
                 <Route path="treasury/deposit" element={<TreasuryDeposit />} />
                 <Route path="treasury/withdraw" element={<TreasuryWithdraw />} />
-                <Route path="treasury/transfer" element={<TreasuryDashboard />} />
+                <Route path="treasury/payments" element={<TreasuryPayments />} />
+                <Route path="treasury/transfers" element={<TreasuryTransfers />} />
+                <Route path="treasury/off-ramp" element={<TreasuryOffRamp />} />
                 <Route path="treasury/accounts" element={<TreasuryDashboard />} />
                 
                 {/* Payouts */}
