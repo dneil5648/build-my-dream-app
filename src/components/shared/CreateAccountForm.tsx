@@ -33,11 +33,11 @@ export const CreateAccountForm: React.FC<CreateAccountFormProps> = ({
       account_request: {
         account: {
           identity_id: identityId,
-          nickname: nickname || undefined,
+          description: description || undefined,
         },
-        description: description || undefined,
       },
       module,
+      nickname: nickname || undefined,
     });
   };
 
