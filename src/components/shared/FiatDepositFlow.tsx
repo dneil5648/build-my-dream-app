@@ -21,10 +21,13 @@ import {
 // Stablecoins for conversion
 const STABLECOINS = ['USDC', 'USDT', 'USDP', 'PYUSD', 'USDG', 'DAI'];
 
+type FlowStep = 'create' | 'instructions' | 'fund';
+
 interface FiatDepositFlowProps {
   accountId: string;
   paxosAccountId: string;
   onSuccess?: () => void;
+  initialStep?: FlowStep;
 }
 
 type DepositScenario = 'hold_usd' | 'convert_hold' | 'convert_send';
@@ -48,9 +51,10 @@ interface DepositInstructionResult {
 export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
   accountId,
   paxosAccountId,
-  onSuccess
+  onSuccess,
+  initialStep = 'create'
 }) => {
-  const [step, setStep] = useState<'create' | 'instructions' | 'fund'>('create');
+  const [step, setStep] = useState<FlowStep>(initialStep);
   const [scenario, setScenario] = useState<DepositScenario>('hold_usd');
   const [network, setNetwork] = useState<FiatNetwork>('WIRE');
   const [accountType, setAccountType] = useState<AccountType>('CHECKING');
