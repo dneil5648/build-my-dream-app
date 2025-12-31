@@ -41,7 +41,7 @@ const SendCrypto: React.FC = () => {
   const accounts = accountsResponse?.data || [];
   const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
   const destinations = destinationsResponse?.data || [];
-  const selectedDestination = destinations.find((d: CryptoDestinationAddress) => d.paxos_crypto_destination_id === formData.destinationId || d.id === formData.destinationId);
+  const selectedDestination = destinations.find((d: CryptoDestinationAddress) => d.id === formData.destinationId);
 
   // Filter stablecoin balances
   const stablecoinBalances = useMemo(() => {
@@ -263,7 +263,7 @@ const SendCrypto: React.FC = () => {
               <SelectContent>
                 {destinations.length > 0 ? (
                   destinations.map((dest: CryptoDestinationAddress) => (
-                    <SelectItem key={dest.id} value={dest.paxos_crypto_destination_id || dest.id}>
+                    <SelectItem key={dest.id} value={dest.id}>
                       <div className="flex items-center gap-2">
                         <Wallet className="h-4 w-4" />
                         <span className="font-medium">{dest.nickname || 'Unnamed'}</span>
