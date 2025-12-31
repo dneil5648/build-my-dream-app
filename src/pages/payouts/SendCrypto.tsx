@@ -271,11 +271,10 @@ const SendCrypto: React.FC = () => {
                 {destinations.length > 0 ? (
                   destinations.map((dest: CryptoDestinationAddress) => (
                     <SelectItem key={dest.id} value={dest.id}>
-                      <div className="flex items-center gap-2">
-                        <Wallet className="h-4 w-4" />
-                        <span className="font-medium">{dest.nickname || 'Unnamed'}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({dest.crypto_network}) {dest.address?.slice(0, 8)}...
+                      <div className="flex flex-col">
+                        <span className="font-medium">{dest.nickname || dest.label || 'Unnamed'}</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          ({dest.crypto_network}) {dest.address?.slice(0, 10)}...{dest.address?.slice(-8)}
                         </span>
                       </div>
                     </SelectItem>
