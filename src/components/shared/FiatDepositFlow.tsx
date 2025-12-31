@@ -60,7 +60,9 @@ export const FiatDepositFlow: React.FC<FiatDepositFlowProps> = ({
 
   const createInstructions = useCreateDepositInstructions();
   const sandboxDeposit = useSandboxDeposit();
-  const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses();
+  const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses(
+    { account_id: accountId }
+  );
   const destinations = destinationsResponse?.data || [];
 
   const handleCopy = (text: string) => {

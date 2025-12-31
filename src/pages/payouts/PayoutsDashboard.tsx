@@ -35,8 +35,12 @@ const PayoutsDashboard: React.FC = () => {
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'PAY_OUTS' });
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities({ module: 'PAY_OUTS' });
   const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
-  const { data: instructionsResponse, isLoading: loadingInstructions } = useDepositInstructions();
-  const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses();
+  const { data: instructionsResponse, isLoading: loadingInstructions } = useDepositInstructions(
+    selectedAccountId ? { account_id: selectedAccountId } : undefined
+  );
+  const { data: destinationsResponse, isLoading: loadingDestinations } = useCryptoDestinationAddresses(
+    selectedAccountId ? { account_id: selectedAccountId } : undefined
+  );
   const { transactions: allTransactions, isLoading: loadingTransactions } = useTransactions({ 
     limit: 10,
     account_id: selectedAccountId || undefined,
