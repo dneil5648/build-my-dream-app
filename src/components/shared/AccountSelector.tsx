@@ -39,7 +39,7 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
               {isLoading 
                 ? 'Loading...' 
                 : selectedAccount 
-                  ? `Account ${selectedAccount.paxos_account_id.slice(0, 8)}...` 
+                  ? selectedAccount.nickname || `Account ${selectedAccount.paxos_account_id.slice(0, 8)}...`
                   : accounts.length > 0 
                     ? 'Select Account' 
                     : 'No Accounts'}
@@ -68,10 +68,10 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">
-                    {account.paxos_account_id.slice(0, 8)}...
+                    {account.nickname || `${account.paxos_account_id.slice(0, 8)}...`}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(account.created_at).toLocaleDateString()}
+                    {account.nickname ? account.paxos_account_id.slice(0, 8) : new Date(account.created_at).toLocaleDateString()}
                   </span>
                 </div>
               </div>
