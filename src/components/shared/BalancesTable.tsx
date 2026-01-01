@@ -27,6 +27,7 @@ interface BalancesTableProps {
   emptyMessage?: string;
   assetMappings?: AssetMapping[];
   allowedAssets?: string[];
+  aggregateMode?: boolean; // When true, combine balances for the same asset
 }
 
 export const BalancesTable: React.FC<BalancesTableProps> = ({
@@ -36,16 +37,41 @@ export const BalancesTable: React.FC<BalancesTableProps> = ({
   emptyMessage = 'No balances found',
   assetMappings = [],
   allowedAssets,
+  aggregateMode = false,
 }) => {
   const [showZeroBalances, setShowZeroBalances] = useState(initialShowZero);
+
+  // Aggregate balances by asset if in aggregate mode
+  const aggregatedBalances = useMemo(() => {
+    if (!aggregateMode) return balances;
+    
+    const balanceMap: Record<string, AccountBalanceItem> = {};
+    balances.forEach((b) => {
+      const existing = balanceMap[b.asset];
+      if (existing) {
+        balanceMap[b.asset] = {
+          asset: b.asset,
+          available: (parseFloat(existing.available) + parseFloat(b.available)).toString(),
+          trading: (parseFloat(existing.trading || '0') + parseFloat(b.trading || '0')).toString(),
+        };
+      } else {
+        balanceMap[b.asset] = { ...b };
+      }
+    });
+    
+    return Object.values(balanceMap).sort((a, b) => 
+      parseFloat(b.available) + parseFloat(b.trading || '0') - 
+      parseFloat(a.available) - parseFloat(a.trading || '0')
+    );
+  }, [balances, aggregateMode]);
 
   // First filter by allowed assets if specified
   const assetFilteredBalances = useMemo(() => {
     if (!allowedAssets || allowedAssets.length === 0) {
-      return balances;
+      return aggregatedBalances;
     }
-    return balances.filter((b) => allowedAssets.includes(b.asset));
-  }, [balances, allowedAssets]);
+    return aggregatedBalances.filter((b) => allowedAssets.includes(b.asset));
+  }, [aggregatedBalances, allowedAssets]);
 
   const filteredBalances = useMemo(() => {
     if (showZeroBalances) {

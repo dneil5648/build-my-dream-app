@@ -32,7 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useAccounts, useCreateAccount, useAccountBalances } from '@/hooks/useAccounts';
+import { useAccounts, useCreateAccount, useAccountBalances, useAllAccountsBalances } from '@/hooks/useAccounts';
 import { useIdentities, useCreateIdentity } from '@/hooks/useIdentities';
 import { useCryptoAddresses, useCryptoDestinationAddresses, useCreateCryptoDestinationAddress, useCreateCryptoAddress } from '@/hooks/useCrypto';
 import { cryptoService } from '@/api';
@@ -74,8 +74,17 @@ const TreasuryDashboard: React.FC = () => {
   // Data fetching
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'TREASURY' });
   const { data: identitiesResponse, isLoading: loadingIdentities } = useIdentities({ module: 'TREASURY' });
-  const { data: balancesResponse, isLoading: loadingBalances } = useAccountBalances(selectedAccountId || '');
+  
+  // Derived accounts (needed early for useAllAccountsBalances)
+  const accounts = accountsResponse?.data || [];
+  
+  // Fetch aggregate balances across all accounts
+  const { allBalances, isLoading: loadingAllBalances } = useAllAccountsBalances(accounts);
+  
+  // Single account balances (for off-ramp form and detail modal)
+  const { data: selectedBalancesResponse, isLoading: loadingSelectedBalances } = useAccountBalances(selectedAccountId || '');
   const { data: detailBalancesResponse, isLoading: loadingDetailBalances } = useAccountBalances(detailAccount?.id || '');
+  
   // Fetch ALL crypto addresses for the table display (no account filter)
   const { data: allCryptoAddressesResponse, isLoading: loadingAllAddresses } = useCryptoAddresses();
   // Fetch addresses for selected account (for other uses)
@@ -89,7 +98,6 @@ const TreasuryDashboard: React.FC = () => {
   );
   const { transactions, isLoading: loadingTransactions } = useTransactions({
     limit: 20,
-    account_id: selectedAccountId || undefined,
     sort: 'created_at',
     order: 'DESC'
   });
@@ -103,9 +111,30 @@ const TreasuryDashboard: React.FC = () => {
   const convertAssets = useConvertAssets();
 
   // Derived data
-  const accounts = accountsResponse?.data || [];
   const identities = identitiesResponse?.data || [];
-  const balances = Array.isArray(balancesResponse?.data?.items) ? balancesResponse.data.items : [];
+  
+  // Aggregate balances across all accounts, filtered by stablecoins
+  const aggregateBalances = useMemo(() => {
+    const balanceMap: Record<string, { asset: string; available: number; trading: number; total: number; accountCount: number }> = {};
+    
+    allBalances.forEach((b) => {
+      // Only include allowed stablecoins
+      if (!TREASURY_STABLECOINS.includes(b.asset)) return;
+      
+      const existing = balanceMap[b.asset] || { asset: b.asset, available: 0, trading: 0, total: 0, accountCount: 0 };
+      const available = parseFloat(b.available || '0');
+      const trading = parseFloat(b.trading || '0');
+      existing.available += available;
+      existing.trading += trading;
+      existing.total += available + trading;
+      if (available > 0 || trading > 0) existing.accountCount += 1;
+      balanceMap[b.asset] = existing;
+    });
+    
+    return Object.values(balanceMap).sort((a, b) => b.total - a.total);
+  }, [allBalances]);
+  
+  const selectedBalances = Array.isArray(selectedBalancesResponse?.data?.items) ? selectedBalancesResponse.data.items : [];
   const detailBalances = Array.isArray(detailBalancesResponse?.data?.items) ? detailBalancesResponse.data.items : [];
   const allCryptoAddresses = allCryptoAddressesResponse?.data || [];
   const cryptoAddresses = cryptoAddressesResponse?.data || [];
@@ -144,35 +173,14 @@ const TreasuryDashboard: React.FC = () => {
     }
   }, [accounts, selectedAccountId]);
 
-  // Aggregate balances across all accounts for dashboard analytics
-  const aggregatedBalances = useMemo(() => {
-    const balanceMap: Record<string, AggregatedBalance> = {};
-    
-    balances.forEach((b: { asset: string; available: string; trading?: string }) => {
-      const existing = balanceMap[b.asset] || { asset: b.asset, total: 0, available: 0, trading: 0, accounts: 0 };
-      const available = parseFloat(b.available || '0');
-      const trading = parseFloat(b.trading || '0');
-      existing.available += available;
-      existing.trading += trading;
-      existing.total += available + trading;
-      existing.accounts += 1;
-      balanceMap[b.asset] = existing;
-    });
-    
-    return Object.values(balanceMap).sort((a, b) => b.total - a.total);
-  }, [balances]);
+  // Calculate net position from aggregate
+  const totalBalance = aggregateBalances.reduce((sum, b) => sum + b.total, 0);
+  const availableBalance = aggregateBalances.reduce((sum, b) => sum + b.available, 0);
+  const tradingBalance = aggregateBalances.reduce((sum, b) => sum + b.trading, 0);
 
-  // Calculate net position
-  const totalBalance = aggregatedBalances.reduce((sum, b) => sum + b.total, 0);
-  const availableBalance = aggregatedBalances.reduce((sum, b) => sum + b.available, 0);
-  const tradingBalance = aggregatedBalances.reduce((sum, b) => sum + b.trading, 0);
-
-  // Stablecoin vs non-stablecoin breakdown
-  const stablecoins = ['USD', 'USDC', 'USDT', 'USDP', 'PYUSD', 'USDG', 'DAI', 'BUSD'];
-  const stablecoinBalance = aggregatedBalances
-    .filter(b => stablecoins.includes(b.asset))
-    .reduce((sum, b) => sum + b.total, 0);
-  const cryptoBalance = totalBalance - stablecoinBalance;
+  // Stablecoin vs Fiat breakdown (for treasury, all are stablecoins so we show stablecoin vs USD)
+  const usdBalance = aggregateBalances.find(b => b.asset === 'USD')?.total || 0;
+  const stablecoinBalance = totalBalance - usdBalance;
 
   // Derive alerts from transaction data
   const alerts = useMemo(() => {
@@ -449,21 +457,21 @@ const TreasuryDashboard: React.FC = () => {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <StatCard
               title="Net Position"
-              value={loadingBalances ? '...' : `$${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              value={loadingAllBalances ? '...' : `$${totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               change={`${accounts.length} account${accounts.length !== 1 ? 's' : ''}`}
               changeType="positive"
               icon={TrendingUp}
             />
             <StatCard
               title="Available Liquidity"
-              value={loadingBalances ? '...' : `$${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              value={loadingAllBalances ? '...' : `$${availableBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               change="instantly usable"
               changeType="positive"
               icon={Coins}
             />
             <StatCard
               title="In Trading"
-              value={loadingBalances ? '...' : `$${tradingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              value={loadingAllBalances ? '...' : `$${tradingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               change="locked"
               changeType="neutral"
               icon={Clock}
@@ -482,7 +490,7 @@ const TreasuryDashboard: React.FC = () => {
             <div className="lg:col-span-2 space-y-6">
               {/* Exposure Tiles */}
               <div className="grid gap-4 md:grid-cols-2">
-                {/* Stablecoin vs Crypto */}
+                {/* Stablecoin vs Fiat */}
                 <Card className="bg-card border-border">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">Asset Exposure</CardTitle>
@@ -498,12 +506,12 @@ const TreasuryDashboard: React.FC = () => {
                     <Progress value={totalBalance > 0 ? (stablecoinBalance / totalBalance) * 100 : 0} className="h-2" />
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-full bg-crypto-btc" />
-                        <span className="text-sm text-foreground">Crypto Assets</span>
+                        <div className="h-3 w-3 rounded-full bg-success" />
+                        <span className="text-sm text-foreground">Fiat Currency</span>
                       </div>
-                      <span className="font-medium text-foreground">${cryptoBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      <span className="font-medium text-foreground">${usdBalance.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     </div>
-                    <Progress value={totalBalance > 0 ? (cryptoBalance / totalBalance) * 100 : 0} className="h-2 [&>div]:bg-crypto-btc" />
+                    <Progress value={totalBalance > 0 ? (usdBalance / totalBalance) * 100 : 0} className="h-2 [&>div]:bg-success" />
                   </CardContent>
                 </Card>
 
@@ -513,11 +521,11 @@ const TreasuryDashboard: React.FC = () => {
                     <CardTitle className="text-sm font-medium text-muted-foreground">Issuer Breakdown</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {aggregatedBalances.length === 0 ? (
+                    {aggregateBalances.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-4">No positions</p>
                     ) : (
                       <div className="space-y-2">
-                        {aggregatedBalances.slice(0, 4).map((b) => (
+                        {aggregateBalances.slice(0, 4).map((b) => (
                           <div key={b.asset} className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <AssetIcon asset={b.asset} size="sm" />
@@ -526,8 +534,8 @@ const TreasuryDashboard: React.FC = () => {
                             <span className="text-sm text-muted-foreground">{b.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                           </div>
                         ))}
-                        {aggregatedBalances.length > 4 && (
-                          <p className="text-xs text-muted-foreground text-center">+{aggregatedBalances.length - 4} more</p>
+                        {aggregateBalances.length > 4 && (
+                          <p className="text-xs text-muted-foreground text-center">+{aggregateBalances.length - 4} more</p>
                         )}
                       </div>
                     )}
@@ -645,7 +653,7 @@ const TreasuryDashboard: React.FC = () => {
                       <p className="text-sm">No accounts yet</p>
                     </div>
                   ) : (
-                    <AccountBalancesCard balances={balances} isLoading={loadingBalances} allowedAssets={TREASURY_STABLECOINS} />
+                    <AccountBalancesCard balances={allBalances} isLoading={loadingAllBalances} allowedAssets={TREASURY_STABLECOINS} aggregateMode={true} />
                   )}
                 </CardContent>
               </Card>
@@ -822,7 +830,7 @@ const TreasuryDashboard: React.FC = () => {
                     accounts={accounts}
                     destinationAddresses={destinations}
                     fiatAccounts={fiatAccounts}
-                    balances={balances}
+                    balances={selectedBalances}
                     selectedAccountId={selectedAccount.id}
                     onSubmit={handleWithdraw}
                     isLoading={withdrawAssets.isPending}

@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 import { accountService } from '@/api';
-import { CreateAccountRequest, ListQueryParams } from '@/api/types';
+import { CreateAccountRequest, ListQueryParams, PaxosAccount, AccountBalanceItem } from '@/api/types';
 
 export const accountKeys = {
   all: ['accounts'] as const,
@@ -33,6 +33,28 @@ export const useAccountBalances = (id: string) => {
     enabled: !!id,
     refetchInterval: 10000, // Poll every 10 seconds for faster balance updates
   });
+};
+
+// Hook to fetch balances for all accounts in a module
+export const useAllAccountsBalances = (accounts: PaxosAccount[]) => {
+  const queries = useQueries({
+    queries: accounts.map((account) => ({
+      queryKey: accountKeys.balances(account.id),
+      queryFn: () => accountService.getAccountBalances(account.id),
+      enabled: !!account.id,
+      refetchInterval: 10000,
+    })),
+  });
+
+  const isLoading = queries.some((q) => q.isLoading);
+  const allBalances: AccountBalanceItem[] = [];
+  
+  queries.forEach((query) => {
+    const items = Array.isArray(query.data?.data?.items) ? query.data.data.items : [];
+    allBalances.push(...items);
+  });
+
+  return { allBalances, isLoading };
 };
 
 export const useCreateAccount = () => {
