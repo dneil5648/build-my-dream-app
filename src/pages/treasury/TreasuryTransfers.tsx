@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRightLeft, Loader2, Wallet, Layers, Scale, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Loader2, Wallet, Layers, Scale, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { toast } from 'sonner';
-import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
+import { useAccounts, useAllAccountsBalances } from '@/hooks/useAccounts';
 import { useCryptoAddresses } from '@/hooks/useCrypto';
 import { useWithdrawAssets } from '@/hooks/useAssets';
-import { PaxosAccount, CryptoAddress, CryptoNetwork } from '@/api/types';
+import { PaxosAccount, CryptoAddress, CryptoNetwork, AccountBalanceItem } from '@/api/types';
 
 const NETWORKS = [
   { value: 'ETHEREUM', label: 'Ethereum' },
@@ -20,6 +20,13 @@ const NETWORKS = [
   { value: 'SOLANA', label: 'Solana' },
   { value: 'BASE', label: 'Base' },
 ];
+
+const TREASURY_ASSETS = ['USDG', 'USDT', 'USDC', 'PYUSD', 'USDP'];
+
+interface RebalanceTarget {
+  accountId: string;
+  targetAmount: string;
+}
 
 const TreasuryTransfers: React.FC = () => {
   const [activeTab, setActiveTab] = useState('transfer');
@@ -32,22 +39,60 @@ const TreasuryTransfers: React.FC = () => {
   // Sweep/Rebalance state
   const [sweepTargetId, setSweepTargetId] = useState('');
   const [sweepAsset, setSweepAsset] = useState('');
+  
+  // Rebalance specific state
+  const [rebalanceParentId, setRebalanceParentId] = useState('');
+  const [rebalanceAsset, setRebalanceAsset] = useState('');
+  const [rebalanceNetwork, setRebalanceNetwork] = useState('ETHEREUM');
+  const [rebalanceTargets, setRebalanceTargets] = useState<RebalanceTarget[]>([]);
+  const [isRebalancing, setIsRebalancing] = useState(false);
 
   const { data: accountsResponse, isLoading: loadingAccounts } = useAccounts({ module: 'TREASURY' });
-  const { data: sourceBalancesResponse, isLoading: loadingSourceBalances } = useAccountBalances(sourceAccountId);
+  const accounts: PaxosAccount[] = accountsResponse?.data || [];
+  
+  // Fetch all account balances for rebalancing
+  const { allBalances, isLoading: loadingAllBalances } = useAllAccountsBalances(accounts);
+  
+  // Build per-account balance map for the selected rebalance asset
+  const accountBalanceMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    allBalances.forEach((b: AccountBalanceItem) => {
+      if (b.asset === rebalanceAsset && b.account_id) {
+        map[b.account_id] = (map[b.account_id] || 0) + parseFloat(b.available || '0');
+      }
+    });
+    return map;
+  }, [allBalances, rebalanceAsset]);
+  
+  // Child accounts (all except parent)
+  const childAccounts = useMemo(() => {
+    return accounts.filter(a => a.id !== rebalanceParentId);
+  }, [accounts, rebalanceParentId]);
+  
+  // Initialize rebalance targets when child accounts change
+  const initializeRebalanceTargets = useCallback(() => {
+    setRebalanceTargets(childAccounts.map(a => ({ accountId: a.id, targetAmount: '' })));
+  }, [childAccounts]);
+  
+  // Fetch deposit addresses for all accounts (needed for rebalancing)
+  const { data: allAddressesResponse } = useCryptoAddresses({ module: 'TREASURY' });
+  const allDepositAddresses: CryptoAddress[] = allAddressesResponse?.data || [];
+  
   const { data: targetAddressesResponse } = useCryptoAddresses(
     targetAccountId ? { account_id: targetAccountId } : undefined
   );
   
   const withdrawAssets = useWithdrawAssets();
 
-  const accounts = accountsResponse?.data || [];
-  const sourceBalances = Array.isArray(sourceBalancesResponse?.data?.items) ? sourceBalancesResponse.data.items : [];
+  // For transfer tab - get source balances from allBalances
+  const sourceBalances = useMemo(() => {
+    return allBalances.filter((b: AccountBalanceItem) => b.account_id === sourceAccountId);
+  }, [allBalances, sourceAccountId]);
+  
   const targetAddresses = targetAddressesResponse?.data || [];
 
   const sourceAccount = accounts.find((a: PaxosAccount) => a.id === sourceAccountId);
-  const targetAccount = accounts.find((a: PaxosAccount) => a.id === targetAccountId);
-  const selectedBalance = sourceBalances.find((b: { asset: string }) => b.asset === asset);
+  const selectedBalance = sourceBalances.find((b: AccountBalanceItem) => b.asset === asset);
 
   // Find deposit address for target account matching asset/network
   const targetDepositAddress = useMemo(() => {
@@ -56,27 +101,26 @@ const TreasuryTransfers: React.FC = () => {
     );
   }, [targetAddresses, asset, network]);
 
-  // Calculate aggregate balances for sweep/rebalance
+  // Calculate aggregate balances for sweep
   const aggregateBalances = useMemo(() => {
-    // This would ideally fetch all account balances, but for now we use available data
     const balanceMap: Record<string, { total: number; accounts: { id: string; nickname: string; balance: number }[] }> = {};
     
-    // In a real implementation, we'd aggregate across all accounts
-    sourceBalances.forEach((b: { asset: string; available: string }) => {
+    allBalances.forEach((b: AccountBalanceItem) => {
       if (!balanceMap[b.asset]) {
         balanceMap[b.asset] = { total: 0, accounts: [] };
       }
       const available = parseFloat(b.available || '0');
       balanceMap[b.asset].total += available;
+      const account = accounts.find(a => a.id === b.account_id);
       balanceMap[b.asset].accounts.push({
-        id: sourceAccountId,
-        nickname: sourceAccount?.nickname || 'Account',
+        id: b.account_id || '',
+        nickname: account?.nickname || 'Account',
         balance: available
       });
     });
 
     return balanceMap;
-  }, [sourceBalances, sourceAccountId, sourceAccount]);
+  }, [allBalances, accounts]);
 
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,20 +187,165 @@ const TreasuryTransfers: React.FC = () => {
     }
   };
 
+  // Calculate rebalance withdrawals
+  const rebalanceWithdrawals = useMemo(() => {
+    if (!rebalanceParentId || !rebalanceAsset || rebalanceTargets.length === 0) return [];
+    
+    const withdrawals: Array<{
+      fromAccountId: string;
+      fromNickname: string;
+      toAccountId: string;
+      toNickname: string;
+      amount: number;
+    }> = [];
+    
+    // Calculate surpluses and deficits
+    const accountStates: Array<{
+      accountId: string;
+      nickname: string;
+      currentBalance: number;
+      targetAmount: number;
+      delta: number; // positive = surplus, negative = deficit
+    }> = [];
+    
+    // Add child accounts with their targets
+    rebalanceTargets.forEach(target => {
+      const account = accounts.find(a => a.id === target.accountId);
+      const currentBalance = accountBalanceMap[target.accountId] || 0;
+      const targetAmount = parseFloat(target.targetAmount) || 0;
+      accountStates.push({
+        accountId: target.accountId,
+        nickname: account?.nickname || 'Account',
+        currentBalance,
+        targetAmount,
+        delta: currentBalance - targetAmount
+      });
+    });
+    
+    // Add parent account (absorbs all excess)
+    const parentAccount = accounts.find(a => a.id === rebalanceParentId);
+    const parentBalance = accountBalanceMap[rebalanceParentId] || 0;
+    
+    // Separate accounts with surplus and deficit
+    const surplusAccounts = accountStates.filter(a => a.delta > 0);
+    const deficitAccounts = accountStates.filter(a => a.delta < 0);
+    
+    // First: move from surplus accounts to deficit accounts
+    for (const deficit of deficitAccounts) {
+      let remaining = Math.abs(deficit.delta);
+      
+      for (const surplus of surplusAccounts) {
+        if (remaining <= 0 || surplus.delta <= 0) continue;
+        
+        const transferAmount = Math.min(surplus.delta, remaining);
+        if (transferAmount > 0) {
+          withdrawals.push({
+            fromAccountId: surplus.accountId,
+            fromNickname: surplus.nickname,
+            toAccountId: deficit.accountId,
+            toNickname: deficit.nickname,
+            amount: transferAmount
+          });
+          surplus.delta -= transferAmount;
+          remaining -= transferAmount;
+        }
+      }
+      
+      // If still in deficit, take from parent
+      if (remaining > 0 && parentBalance >= remaining) {
+        withdrawals.push({
+          fromAccountId: rebalanceParentId,
+          fromNickname: parentAccount?.nickname || 'Parent Account',
+          toAccountId: deficit.accountId,
+          toNickname: deficit.nickname,
+          amount: remaining
+        });
+      }
+    }
+    
+    // Second: sweep remaining surplus to parent
+    for (const surplus of surplusAccounts) {
+      if (surplus.delta > 0) {
+        withdrawals.push({
+          fromAccountId: surplus.accountId,
+          fromNickname: surplus.nickname,
+          toAccountId: rebalanceParentId,
+          toNickname: parentAccount?.nickname || 'Parent Account',
+          amount: surplus.delta
+        });
+      }
+    }
+    
+    return withdrawals;
+  }, [rebalanceParentId, rebalanceAsset, rebalanceTargets, accounts, accountBalanceMap]);
+
   const handleRebalance = async () => {
-    if (!sweepAsset || accounts.length < 2) {
-      toast.error('Need at least 2 accounts and an asset selected');
+    if (!rebalanceParentId || !rebalanceAsset || !rebalanceNetwork) {
+      toast.error('Select parent account, asset, and network');
       return;
     }
-
-    // Calculate target balance per account
-    const totalBalance = aggregateBalances[sweepAsset]?.total || 0;
-    const targetPerAccount = totalBalance / accounts.length;
-
-    toast.info(`Rebalancing ${sweepAsset}: ${targetPerAccount.toFixed(2)} per account (${accounts.length} accounts)`);
     
-    // In production, this would execute multiple transfers to balance accounts
-    // For now, just show the calculation
+    if (rebalanceWithdrawals.length === 0) {
+      toast.info('No rebalancing needed - all accounts are at target');
+      return;
+    }
+    
+    setIsRebalancing(true);
+    
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const withdrawal of rebalanceWithdrawals) {
+        // Find deposit address for target account (map internal id to paxos_account_id)
+        const targetAccount = accounts.find(a => a.id === withdrawal.toAccountId);
+        const targetPaxosAccountId = targetAccount?.paxos_account_id;
+        
+        const targetDepositAddr = allDepositAddresses.find(
+          addr => addr.paxos_account_id === targetPaxosAccountId && 
+                  addr.source_asset === rebalanceAsset && 
+                  addr.network === rebalanceNetwork
+        );
+        
+        if (!targetDepositAddr) {
+          toast.error(`No deposit address for ${withdrawal.toNickname} on ${rebalanceNetwork}`);
+          errorCount++;
+          continue;
+        }
+        
+        try {
+          await withdrawAssets.mutateAsync({
+            account_id: withdrawal.fromAccountId,
+            source_asset: rebalanceAsset,
+            destination_asset: rebalanceAsset,
+            destination_address: targetDepositAddr.wallet_address,
+            amount: withdrawal.amount.toString(),
+            network: rebalanceNetwork as CryptoNetwork,
+          });
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          toast.error(`Failed: ${withdrawal.fromNickname} → ${withdrawal.toNickname}`);
+        }
+      }
+      
+      if (successCount > 0) {
+        toast.success(`Rebalance complete: ${successCount} transfers executed`);
+      }
+      if (errorCount > 0) {
+        toast.warning(`${errorCount} transfers failed`);
+      }
+    } catch (error) {
+      toast.error('Rebalance failed');
+    } finally {
+      setIsRebalancing(false);
+    }
+  };
+  
+  const updateTargetAmount = (accountId: string, amount: string) => {
+    setRebalanceTargets(prev => 
+      prev.map(t => t.accountId === accountId ? { ...t, targetAmount: amount } : t)
+    );
   };
 
   return (
@@ -250,13 +439,13 @@ const TreasuryTransfers: React.FC = () => {
                     <Select 
                       value={asset} 
                       onValueChange={setAsset}
-                      disabled={!sourceAccountId || loadingSourceBalances}
+                      disabled={!sourceAccountId || loadingAllBalances}
                     >
                       <SelectTrigger className="bg-secondary border-border">
                         <SelectValue placeholder={sourceAccountId ? 'Select asset' : 'Select source first'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {sourceBalances.map((balance: { asset: string; available: string }) => (
+                        {sourceBalances.map((balance: AccountBalanceItem) => (
                           <SelectItem key={balance.asset} value={balance.asset}>
                             <div className="flex items-center justify-between w-full gap-4">
                               <div className="flex items-center gap-2">
@@ -429,61 +618,164 @@ const TreasuryTransfers: React.FC = () => {
             <CardHeader>
               <CardTitle>Rebalance Accounts</CardTitle>
               <CardDescription>
-                Distribute an asset equally across all treasury accounts
+                Set target amounts for child accounts. Extra funds sweep to the parent account, deficits pull from surplus accounts or parent.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Parent Account */}
+                <div className="space-y-2">
+                  <Label>Parent Account (receives excess funds)</Label>
+                  <Select 
+                    value={rebalanceParentId} 
+                    onValueChange={(id) => {
+                      setRebalanceParentId(id);
+                      // Reset targets when parent changes
+                      setTimeout(initializeRebalanceTargets, 0);
+                    }}
+                  >
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select parent account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((account: PaxosAccount) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          <div className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-muted-foreground" />
+                            {account.nickname || `Account ${account.id.slice(0, 8)}`}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Asset to Rebalance */}
+                <div className="space-y-2">
+                  <Label>Asset</Label>
+                  <Select value={rebalanceAsset} onValueChange={setRebalanceAsset}>
+                    <SelectTrigger className="bg-secondary border-border">
+                      <SelectValue placeholder="Select asset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TREASURY_ASSETS.map((a) => (
+                        <SelectItem key={a} value={a}>
+                          <div className="flex items-center gap-2">
+                            <AssetIcon asset={a} size="sm" />
+                            {a}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Network */}
               <div className="space-y-2">
-                <Label>Asset to Rebalance</Label>
-                <Select value={sweepAsset} onValueChange={setSweepAsset}>
+                <Label>Network (for withdrawals)</Label>
+                <Select value={rebalanceNetwork} onValueChange={setRebalanceNetwork}>
                   <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Select asset" />
+                    <SelectValue placeholder="Select network" />
                   </SelectTrigger>
                   <SelectContent>
-                    {['USDC', 'USDT', 'USDP', 'ETH', 'BTC'].map((a) => (
-                      <SelectItem key={a} value={a}>
-                        <div className="flex items-center gap-2">
-                          <AssetIcon asset={a} size="sm" />
-                          {a}
-                        </div>
-                      </SelectItem>
+                    {NETWORKS.map((n) => (
+                      <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Preview */}
-              {sweepAsset && aggregateBalances[sweepAsset] && accounts.length > 0 && (
-                <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-                  <p className="text-sm text-muted-foreground mb-2">Rebalance Preview</p>
-                  <div className="grid gap-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-foreground">Total {sweepAsset}</span>
-                      <span className="font-semibold text-foreground">
-                        {aggregateBalances[sweepAsset].total.toLocaleString()}
+              {/* Child Account Targets */}
+              {rebalanceParentId && childAccounts.length > 0 && (
+                <div className="space-y-4">
+                  <Label>Target Amounts per Child Account</Label>
+                  <div className="space-y-3">
+                    {childAccounts.map((account) => {
+                      const target = rebalanceTargets.find(t => t.accountId === account.id);
+                      const currentBalance = accountBalanceMap[account.id] || 0;
+                      return (
+                        <div key={account.id} className="flex items-center gap-4 p-3 rounded-lg bg-secondary/50 border border-border">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Wallet className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="font-medium text-foreground truncate">
+                                {account.nickname || `Account ${account.id.slice(0, 8)}`}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Current: {currentBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })} {rebalanceAsset || '—'}
+                            </p>
+                          </div>
+                          <div className="w-32">
+                            <Input
+                              type="number"
+                              placeholder="0.00"
+                              value={target?.targetAmount || ''}
+                              onChange={(e) => updateTargetAmount(account.id, e.target.value)}
+                              className="bg-background border-border text-right"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Parent Account Balance */}
+              {rebalanceParentId && (
+                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-foreground">
+                        {accounts.find(a => a.id === rebalanceParentId)?.nickname || 'Parent'}
                       </span>
+                      <span className="text-xs text-muted-foreground">(Parent)</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-foreground">Number of accounts</span>
-                      <span className="font-semibold text-foreground">{accounts.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-border">
-                      <span className="text-sm text-foreground">Target per account</span>
-                      <span className="font-semibold text-module-treasury">
-                        {(aggregateBalances[sweepAsset].total / accounts.length).toLocaleString(undefined, { maximumFractionDigits: 2 })} {sweepAsset}
-                      </span>
-                    </div>
+                    <span className="text-sm text-foreground">
+                      {(accountBalanceMap[rebalanceParentId] || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} {rebalanceAsset || '—'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Rebalance Preview */}
+              {rebalanceWithdrawals.length > 0 && (
+                <div className="space-y-3">
+                  <Label>Planned Withdrawals</Label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {rebalanceWithdrawals.map((w, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded bg-secondary/50 border border-border text-sm">
+                        <span className="text-foreground truncate">{w.fromNickname}</span>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <span className="text-foreground truncate">{w.toNickname}</span>
+                        <span className="ml-auto font-mono text-module-treasury">
+                          {w.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
               <Button
                 onClick={handleRebalance}
-                disabled={withdrawAssets.isPending || !sweepAsset || accounts.length < 2}
+                disabled={isRebalancing || !rebalanceParentId || !rebalanceAsset || !rebalanceNetwork || accounts.length < 2}
                 className="w-full bg-module-treasury hover:bg-module-treasury/90"
               >
-                <Scale className="h-4 w-4 mr-2" />
-                Execute Rebalance
+                {isRebalancing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Rebalancing...
+                  </>
+                ) : (
+                  <>
+                    <Scale className="h-4 w-4 mr-2" />
+                    Execute Rebalance ({rebalanceWithdrawals.length} transfers)
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

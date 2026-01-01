@@ -49,9 +49,14 @@ export const useAllAccountsBalances = (accounts: PaxosAccount[]) => {
   const isLoading = queries.some((q) => q.isLoading);
   const allBalances: AccountBalanceItem[] = [];
   
-  queries.forEach((query) => {
+  queries.forEach((query, index) => {
     const items = Array.isArray(query.data?.data?.items) ? query.data.data.items : [];
-    allBalances.push(...items);
+    // Attach account_id to each balance item for tracking
+    const itemsWithAccountId = items.map(item => ({
+      ...item,
+      account_id: accounts[index]?.id
+    }));
+    allBalances.push(...itemsWithAccountId);
   });
 
   return { allBalances, isLoading };
