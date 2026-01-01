@@ -6,12 +6,14 @@ interface AccountBalancesCardProps {
   balances: AccountBalanceItem[];
   isLoading?: boolean;
   allowedAssets?: string[];
+  aggregateMode?: boolean;
 }
 
 export const AccountBalancesCard: React.FC<AccountBalancesCardProps> = ({
   balances,
   isLoading,
   allowedAssets,
+  aggregateMode,
 }) => {
   return (
     <BalancesTable 
@@ -19,6 +21,7 @@ export const AccountBalancesCard: React.FC<AccountBalancesCardProps> = ({
       isLoading={isLoading}
       emptyMessage="No balances found"
       allowedAssets={allowedAssets}
+      aggregateMode={aggregateMode}
     />
   );
 };
