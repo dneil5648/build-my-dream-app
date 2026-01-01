@@ -23,6 +23,7 @@ interface AccountDetailModalProps {
   isLoadingBalances?: boolean;
   isOpen: boolean;
   onClose: () => void;
+  allowedAssets?: string[];
 }
 
 export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
@@ -37,6 +38,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
   isLoadingBalances,
   isOpen,
   onClose,
+  allowedAssets,
 }) => {
   if (!account) return null;
 
@@ -275,7 +277,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                     <p className="text-sm">Deposit funds to see balances</p>
                   </div>
                 ) : (
-                  <BalancesTable balances={balances} isLoading={isLoadingBalances} />
+                  <BalancesTable balances={balances} isLoading={isLoadingBalances} allowedAssets={allowedAssets} />
                 )}
               </TabsContent>
             </div>
@@ -392,7 +394,7 @@ export const AccountDetailModal: React.FC<AccountDetailModalProps> = ({
                   <p className="text-sm">Deposit funds to see balances</p>
                 </div>
               ) : (
-                <BalancesTable balances={balances} isLoading={isLoadingBalances} />
+                <BalancesTable balances={balances} isLoading={isLoadingBalances} allowedAssets={allowedAssets} />
               )}
             </TabsContent>
 
