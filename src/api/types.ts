@@ -308,6 +308,7 @@ export interface AccountBalanceItem {
   asset: string;
   available: string;
   trading: string;
+  account_id?: string; // Added when aggregating across multiple accounts
 }
 
 export interface AccountBalancesResponse {
