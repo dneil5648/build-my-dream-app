@@ -26,6 +26,7 @@ interface BalancesTableProps {
   showZeroBalances?: boolean;
   emptyMessage?: string;
   assetMappings?: AssetMapping[];
+  allowedAssets?: string[];
 }
 
 export const BalancesTable: React.FC<BalancesTableProps> = ({
@@ -34,23 +35,32 @@ export const BalancesTable: React.FC<BalancesTableProps> = ({
   showZeroBalances: initialShowZero = false,
   emptyMessage = 'No balances found',
   assetMappings = [],
+  allowedAssets,
 }) => {
   const [showZeroBalances, setShowZeroBalances] = useState(initialShowZero);
 
-  const filteredBalances = useMemo(() => {
-    if (showZeroBalances) {
+  // First filter by allowed assets if specified
+  const assetFilteredBalances = useMemo(() => {
+    if (!allowedAssets || allowedAssets.length === 0) {
       return balances;
     }
-    return balances.filter(
+    return balances.filter((b) => allowedAssets.includes(b.asset));
+  }, [balances, allowedAssets]);
+
+  const filteredBalances = useMemo(() => {
+    if (showZeroBalances) {
+      return assetFilteredBalances;
+    }
+    return assetFilteredBalances.filter(
       (b) => parseFloat(b.available) > 0 || parseFloat(b.trading) > 0
     );
-  }, [balances, showZeroBalances]);
+  }, [assetFilteredBalances, showZeroBalances]);
 
   const hasZeroBalances = useMemo(() => {
-    return balances.some(
+    return assetFilteredBalances.some(
       (b) => parseFloat(b.available) === 0 && parseFloat(b.trading) === 0
     );
-  }, [balances]);
+  }, [assetFilteredBalances]);
 
   // Get asset display info from mappings
   const getAssetInfo = (asset: string) => {
@@ -167,7 +177,7 @@ export const BalancesTable: React.FC<BalancesTableProps> = ({
 
       {/* Summary */}
       <p className="text-xs text-muted-foreground text-right">
-        Showing {filteredBalances.length} of {balances.length} assets
+        Showing {filteredBalances.length} of {assetFilteredBalances.length} assets
       </p>
     </div>
   );

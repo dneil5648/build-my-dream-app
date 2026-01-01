@@ -47,6 +47,9 @@ import {
 import { getModuleIdentityConfig, saveModuleIdentityConfig } from '@/pages/config/ConfigPage';
 import { toast } from 'sonner';
 
+// Treasury stablecoins filter
+const TREASURY_STABLECOINS = ['USDG', 'USDT', 'USDC', 'PYUSD', 'USDP'];
+
 // Helper to aggregate balances across all accounts
 interface AggregatedBalance {
   asset: string;
@@ -642,7 +645,7 @@ const TreasuryDashboard: React.FC = () => {
                       <p className="text-sm">No accounts yet</p>
                     </div>
                   ) : (
-                    <AccountBalancesCard balances={balances} isLoading={loadingBalances} />
+                    <AccountBalancesCard balances={balances} isLoading={loadingBalances} allowedAssets={TREASURY_STABLECOINS} />
                   )}
                 </CardContent>
               </Card>
@@ -973,6 +976,7 @@ const TreasuryDashboard: React.FC = () => {
         isOpen={!!detailAccount}
         onClose={() => setDetailAccount(null)}
         showDetailsTab={true}
+        allowedAssets={TREASURY_STABLECOINS}
       />
     </div>
   );
