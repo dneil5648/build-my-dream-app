@@ -69,10 +69,13 @@ const TreasuryTransfers: React.FC = () => {
     return accounts.filter(a => a.id !== rebalanceParentId);
   }, [accounts, rebalanceParentId]);
   
-  // Initialize rebalance targets when child accounts change
+  // Initialize rebalance targets when child accounts change - default to current balance
   const initializeRebalanceTargets = useCallback(() => {
-    setRebalanceTargets(childAccounts.map(a => ({ accountId: a.id, targetAmount: '' })));
-  }, [childAccounts]);
+    setRebalanceTargets(childAccounts.map(a => ({ 
+      accountId: a.id, 
+      targetAmount: (accountBalanceMap[a.id] || 0).toString() 
+    })));
+  }, [childAccounts, accountBalanceMap]);
   
   // Fetch deposit addresses for all accounts (needed for rebalancing)
   const { data: allAddressesResponse } = useCryptoAddresses({ module: 'TREASURY' });
