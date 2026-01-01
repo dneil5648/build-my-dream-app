@@ -266,9 +266,9 @@ const TreasuryTransfers: React.FC = () => {
       }
     }
     
-    // Second: sweep remaining surplus to parent
+    // Second: sweep remaining surplus to parent (skip if it's the parent itself)
     for (const surplus of surplusAccounts) {
-      if (surplus.delta > 0) {
+      if (surplus.delta > 0 && surplus.accountId !== rebalanceParentId) {
         withdrawals.push({
           fromAccountId: surplus.accountId,
           fromNickname: surplus.nickname,
@@ -279,7 +279,8 @@ const TreasuryTransfers: React.FC = () => {
       }
     }
     
-    return withdrawals;
+    // Filter out any self-transfers (safety check)
+    return withdrawals.filter(w => w.fromAccountId !== w.toAccountId);
   }, [rebalanceParentId, rebalanceAsset, rebalanceTargets, accounts, accountBalanceMap]);
 
   const handleRebalance = async () => {
