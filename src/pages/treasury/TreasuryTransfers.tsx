@@ -578,7 +578,7 @@ const TreasuryTransfers: React.FC = () => {
                       <SelectValue placeholder="Select asset" />
                     </SelectTrigger>
                     <SelectContent>
-                      {['USDC', 'USDT', 'USDP', 'ETH', 'BTC'].map((a) => (
+                      {TREASURY_ASSETS.map((a) => (
                         <SelectItem key={a} value={a}>
                           <div className="flex items-center gap-2">
                             <AssetIcon asset={a} size="sm" />
