@@ -15,7 +15,7 @@ import { useWithdrawAssets } from '@/hooks/useAssets';
 import { PaxosAccount, CryptoAddress, CryptoNetwork, AccountBalanceItem } from '@/api/types';
 import { TREASURY_ASSETS, CRYPTO_NETWORKS } from '@/lib/constants';
 
-const TREASURY_ASSET_VALUES = TREASURY_ASSETS.map(a => a.value);
+const TREASURY_ASSET_VALUES: string[] = TREASURY_ASSETS.map(a => a.value);
 
 interface RebalanceTarget {
   accountId: string;
@@ -457,17 +457,19 @@ const TreasuryTransfers: React.FC = () => {
                         <SelectValue placeholder={sourceAccountId ? 'Select asset' : 'Select source first'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {sourceBalances.map((balance: AccountBalanceItem) => (
-                          <SelectItem key={balance.asset} value={balance.asset}>
-                            <div className="flex items-center justify-between w-full gap-4">
-                              <div className="flex items-center gap-2">
-                                <AssetIcon asset={balance.asset} size="sm" />
-                                {balance.asset}
+                        {sourceBalances
+                          .filter((balance: AccountBalanceItem) => TREASURY_ASSET_VALUES.includes(balance.asset))
+                          .map((balance: AccountBalanceItem) => (
+                            <SelectItem key={balance.asset} value={balance.asset}>
+                              <div className="flex items-center justify-between w-full gap-4">
+                                <div className="flex items-center gap-2">
+                                  <AssetIcon asset={balance.asset} size="sm" />
+                                  {balance.asset}
+                                </div>
+                                <span className="text-muted-foreground">{balance.available}</span>
                               </div>
-                              <span className="text-muted-foreground">{balance.available}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
