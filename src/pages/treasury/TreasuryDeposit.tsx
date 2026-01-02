@@ -12,15 +12,26 @@ import { useCreateCryptoAddress } from '@/hooks/useCrypto';
 import { useAccounts } from '@/hooks/useAccounts';
 import { CryptoNetwork, PaxosAccount } from '@/api/types';
 
-const NETWORKS = [
-  { value: 'ETHEREUM', label: 'Ethereum', assets: ['ETH', 'USDC', 'USDT', 'USDP', 'PYUSD', 'USDG'] },
-  { value: 'POLYGON', label: 'Polygon', assets: ['USDC', 'USDG'] },
-  { value: 'SOLANA', label: 'Solana', assets: ['SOL', 'USDC', 'PYUSD', 'USDG'] },
-  { value: 'BASE', label: 'Base', assets: ['USDC', 'USDG'] },
-  { value: 'BITCOIN', label: 'Bitcoin', assets: ['BTC'] },
-];
+import { TREASURY_ASSETS, CRYPTO_NETWORKS } from '@/lib/constants';
 
-const ALL_ASSETS = ['BTC', 'ETH', 'SOL', 'USDC', 'USDT', 'USDP', 'PYUSD', 'USDG'];
+// Network to supported assets mapping for deposit
+const NETWORK_ASSETS: Record<string, string[]> = {
+  'ETHEREUM': ['USDC', 'USDT', 'USDP', 'PYUSD', 'USDG', 'DAI', 'BUSD'],
+  'POLYGON': ['USDC', 'USDG', 'USDT', 'DAI'],
+  'SOLANA': ['USDC', 'PYUSD', 'USDG'],
+  'BASE': ['USDC', 'USDG'],
+  'STELLAR': ['USDC'],
+  'BITCOIN': [],
+  'LITECOIN': [],
+  'ARBITRUM': ['USDC', 'USDT', 'DAI'],
+  'OPTIMISM': ['USDC', 'USDT', 'DAI'],
+  'AVALANCHE': ['USDC', 'USDT'],
+  'TRON': ['USDT'],
+  'BNB': ['USDC', 'USDT', 'BUSD'],
+};
+
+// Get all unique assets from TREASURY_ASSETS
+const ALL_ASSETS = TREASURY_ASSETS.map(a => a.value);
 
 const TreasuryDeposit: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -41,7 +52,7 @@ const TreasuryDeposit: React.FC = () => {
 
   // Get available networks for selected asset
   const availableNetworks = asset 
-    ? NETWORKS.filter(n => n.assets.includes(asset))
+    ? CRYPTO_NETWORKS.filter(n => NETWORK_ASSETS[n.value]?.includes(asset))
     : [];
 
   const handleGenerate = async () => {

@@ -15,14 +15,7 @@ import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
 import { useCryptoDestinationAddresses, useCreateCryptoDestinationAddress } from '@/hooks/useCrypto';
 import { useWithdrawAssets } from '@/hooks/useAssets';
 import { CryptoNetwork, CryptoDestinationAddress, CreateCryptoDestinationAddressRequest, PaxosAccount } from '@/api/types';
-
-const NETWORKS = [
-  { value: 'ETHEREUM', label: 'Ethereum' },
-  { value: 'POLYGON', label: 'Polygon' },
-  { value: 'SOLANA', label: 'Solana' },
-  { value: 'BASE', label: 'Base' },
-  { value: 'BITCOIN', label: 'Bitcoin' },
-];
+import { CRYPTO_NETWORKS } from '@/lib/constants';
 
 const TreasuryWithdraw: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -166,7 +159,7 @@ const TreasuryWithdraw: React.FC = () => {
                   <SelectValue placeholder="Select network" />
                 </SelectTrigger>
                 <SelectContent>
-                  {NETWORKS.map((n) => (
+                  {CRYPTO_NETWORKS.map((n) => (
                     <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
                   ))}
                 </SelectContent>

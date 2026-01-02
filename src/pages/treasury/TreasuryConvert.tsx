@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
 import { useConvertAssets } from '@/hooks/useAssets';
 import { PaxosAccount } from '@/api/types';
+import { TREASURY_ASSETS } from '@/lib/constants';
 
 const TreasuryConvert: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -156,13 +157,13 @@ const TreasuryConvert: React.FC = () => {
                     <SelectValue placeholder={sourceAsset ? 'Asset' : 'Select from'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {['USDC', 'USDT', 'USDP', 'PYUSD', 'USDG', 'USD', 'ETH', 'BTC', 'SOL']
-                      .filter(a => a !== sourceAsset)
+                    {TREASURY_ASSETS
+                      .filter(a => a.value !== sourceAsset)
                       .map((asset) => (
-                        <SelectItem key={asset} value={asset}>
+                        <SelectItem key={asset.value} value={asset.value}>
                           <div className="flex items-center gap-2">
-                            <AssetIcon asset={asset} size="sm" />
-                            {asset}
+                            <AssetIcon asset={asset.value} size="sm" />
+                            {asset.label}
                           </div>
                         </SelectItem>
                       ))}

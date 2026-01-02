@@ -14,16 +14,7 @@ import { useAccounts, useAccountBalances } from '@/hooks/useAccounts';
 import { useCryptoDestinationAddresses, useCalculateWithdrawalFee } from '@/hooks/useCrypto';
 import { useWithdrawAssets, useConvertAssets } from '@/hooks/useAssets';
 import { CryptoNetwork, CryptoDestinationAddress } from '@/api/types';
-
-const NETWORKS = [
-  { value: 'ETHEREUM', label: 'Ethereum' },
-  { value: 'POLYGON', label: 'Polygon' },
-  { value: 'SOLANA', label: 'Solana' },
-  { value: 'BASE', label: 'Base' },
-  { value: 'BITCOIN', label: 'Bitcoin' },
-  { value: 'ARBITRUM', label: 'Arbitrum' },
-  { value: 'OPTIMISM', label: 'Optimism' },
-];
+import { TREASURY_ASSETS, CRYPTO_NETWORKS } from '@/lib/constants';
 
 const TreasuryPayments: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
@@ -212,7 +203,7 @@ const TreasuryPayments: React.FC = () => {
                     <SelectValue placeholder="Select network" />
                   </SelectTrigger>
                   <SelectContent>
-                    {NETWORKS.map((n) => (
+                    {CRYPTO_NETWORKS.map((n) => (
                       <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -242,11 +233,11 @@ const TreasuryPayments: React.FC = () => {
                     <SelectValue placeholder="Select target asset" />
                   </SelectTrigger>
                   <SelectContent>
-                    {['USDC', 'USDT', 'USDP', 'ETH', 'BTC'].filter(a => a !== asset).map((a) => (
-                      <SelectItem key={a} value={a}>
+                    {TREASURY_ASSETS.filter(a => a.value !== asset).map((a) => (
+                      <SelectItem key={a.value} value={a.value}>
                         <div className="flex items-center gap-2">
-                          <AssetIcon asset={a} size="sm" />
-                          {a}
+                          <AssetIcon asset={a.value} size="sm" />
+                          {a.label}
                         </div>
                       </SelectItem>
                     ))}
