@@ -53,6 +53,10 @@ const TreasuryTransfers: React.FC = () => {
   // Fetch all account balances for rebalancing
   const { allBalances, isLoading: loadingAllBalances } = useAllAccountsBalances(accounts);
   
+  // Fetch deposit addresses for all accounts (needed for rebalancing)
+  const { data: allAddressesResponse } = useCryptoAddresses({ module: 'TREASURY' });
+  const allDepositAddresses: CryptoAddress[] = allAddressesResponse?.data || [];
+  
   // Build per-account balance map for the selected rebalance asset
   const accountBalanceMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -64,10 +68,24 @@ const TreasuryTransfers: React.FC = () => {
     return map;
   }, [allBalances, rebalanceAsset]);
   
-  // Child accounts (all except parent)
+  // Filter accounts that have a deposit address for the selected network/asset
+  const accountsWithCompatibleAddress = useMemo(() => {
+    if (!rebalanceNetwork || !rebalanceAsset) return [];
+    
+    return accounts.filter(account => {
+      // Find a deposit address matching network and asset for this account
+      return allDepositAddresses.some(
+        addr => addr.paxos_account_id === account.paxos_account_id &&
+                addr.network === rebalanceNetwork &&
+                addr.source_asset === rebalanceAsset
+      );
+    });
+  }, [accounts, allDepositAddresses, rebalanceNetwork, rebalanceAsset]);
+  
+  // Child accounts (all compatible accounts except parent)
   const childAccounts = useMemo(() => {
-    return accounts.filter(a => a.id !== rebalanceParentId);
-  }, [accounts, rebalanceParentId]);
+    return accountsWithCompatibleAddress.filter(a => a.id !== rebalanceParentId);
+  }, [accountsWithCompatibleAddress, rebalanceParentId]);
   
   // Initialize rebalance targets when child accounts change - default to current balance
   const initializeRebalanceTargets = useCallback(() => {
@@ -76,10 +94,6 @@ const TreasuryTransfers: React.FC = () => {
       targetAmount: (accountBalanceMap[a.id] || 0).toString() 
     })));
   }, [childAccounts, accountBalanceMap]);
-  
-  // Fetch deposit addresses for all accounts (needed for rebalancing)
-  const { data: allAddressesResponse } = useCryptoAddresses({ module: 'TREASURY' });
-  const allDepositAddresses: CryptoAddress[] = allAddressesResponse?.data || [];
   
   const { data: targetAddressesResponse } = useCryptoAddresses(
     targetAccountId ? { account_id: targetAccountId } : undefined
@@ -626,29 +640,25 @@ const TreasuryTransfers: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Network & Asset Selection First */}
               <div className="grid md:grid-cols-2 gap-6">
-                {/* Parent Account */}
+                {/* Network */}
                 <div className="space-y-2">
-                  <Label>Parent Account (receives excess funds)</Label>
+                  <Label>Network</Label>
                   <Select 
-                    value={rebalanceParentId} 
-                    onValueChange={(id) => {
-                      setRebalanceParentId(id);
-                      // Reset targets when parent changes
-                      setTimeout(initializeRebalanceTargets, 0);
+                    value={rebalanceNetwork} 
+                    onValueChange={(val) => {
+                      setRebalanceNetwork(val);
+                      setRebalanceParentId(''); // Reset parent when network changes
+                      setRebalanceTargets([]);
                     }}
                   >
                     <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue placeholder="Select parent account" />
+                      <SelectValue placeholder="Select network" />
                     </SelectTrigger>
                     <SelectContent>
-                      {accounts.map((account: PaxosAccount) => (
-                        <SelectItem key={account.id} value={account.id}>
-                          <div className="flex items-center gap-2">
-                            <Wallet className="h-4 w-4 text-muted-foreground" />
-                            {account.nickname || `Account ${account.id.slice(0, 8)}`}
-                          </div>
-                        </SelectItem>
+                      {NETWORKS.map((n) => (
+                        <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -657,7 +667,14 @@ const TreasuryTransfers: React.FC = () => {
                 {/* Asset to Rebalance */}
                 <div className="space-y-2">
                   <Label>Asset</Label>
-                  <Select value={rebalanceAsset} onValueChange={setRebalanceAsset}>
+                  <Select 
+                    value={rebalanceAsset} 
+                    onValueChange={(val) => {
+                      setRebalanceAsset(val);
+                      setRebalanceParentId(''); // Reset parent when asset changes
+                      setRebalanceTargets([]);
+                    }}
+                  >
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue placeholder="Select asset" />
                     </SelectTrigger>
@@ -675,19 +692,44 @@ const TreasuryTransfers: React.FC = () => {
                 </div>
               </div>
 
-              {/* Network */}
+              {/* Parent Account - only show accounts with compatible deposit addresses */}
               <div className="space-y-2">
-                <Label>Network (for withdrawals)</Label>
-                <Select value={rebalanceNetwork} onValueChange={setRebalanceNetwork}>
+                <Label>Parent Account (receives excess funds)</Label>
+                <Select 
+                  value={rebalanceParentId} 
+                  onValueChange={(id) => {
+                    setRebalanceParentId(id);
+                    // Reset targets when parent changes
+                    setTimeout(initializeRebalanceTargets, 0);
+                  }}
+                  disabled={!rebalanceNetwork || !rebalanceAsset}
+                >
                   <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue placeholder="Select network" />
+                    <SelectValue placeholder={
+                      !rebalanceNetwork || !rebalanceAsset 
+                        ? "Select network & asset first" 
+                        : accountsWithCompatibleAddress.length === 0
+                          ? "No accounts with matching deposit address"
+                          : "Select parent account"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
-                    {NETWORKS.map((n) => (
-                      <SelectItem key={n.value} value={n.value}>{n.label}</SelectItem>
+                    {accountsWithCompatibleAddress.map((account: PaxosAccount) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4 text-muted-foreground" />
+                          {account.nickname || `Account ${account.id.slice(0, 8)}`}
+                        </div>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {rebalanceNetwork && rebalanceAsset && accountsWithCompatibleAddress.length === 0 && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    No accounts have a {rebalanceNetwork} deposit address for {rebalanceAsset}
+                  </p>
+                )}
               </div>
 
               {/* Child Account Targets */}
