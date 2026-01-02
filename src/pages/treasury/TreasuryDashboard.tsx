@@ -469,13 +469,47 @@ const TreasuryDashboard: React.FC = () => {
               changeType="positive"
               icon={Coins}
             />
-            <StatCard
-              title="In Trading"
-              value={loadingAllBalances ? '...' : `$${tradingBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              change="locked"
-              changeType="neutral"
-              icon={Clock}
-            />
+            {/* Account Balance Breakdown Card */}
+            <Card className="bg-card border-border">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Account Balances
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {loadingAllBalances || loadingAccounts ? (
+                  <div className="flex items-center justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : accounts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">No accounts</p>
+                ) : (
+                  <div className="space-y-2 max-h-[120px] overflow-y-auto">
+                    {accounts.map((account: PaxosAccount, index: number) => {
+                      // Calculate total balance for this account
+                      const accountBalances = allBalances.filter(b => 
+                        b.account_id === account.id && TREASURY_STABLECOINS.includes(b.asset)
+                      );
+                      const accountTotal = accountBalances.reduce((sum, b) => {
+                        return sum + parseFloat(b.available || '0') + parseFloat(b.trading || '0');
+                      }, 0);
+                      
+                      return (
+                        <div key={account.id} className="flex items-center justify-between text-sm">
+                          <span className="text-foreground truncate max-w-[120px]" title={account.nickname || `Wallet ${index + 1}`}>
+                            {account.nickname || `Wallet ${index + 1}`}
+                          </span>
+                          <span className="font-medium text-foreground">
+                            ${accountTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
             <StatCard
               title="Pending Ops"
               value={loadingTransactions ? '...' : transactions.filter((t: Transaction) => t.status === 'PENDING' || t.status === 'PROCESSING').length.toString()}
