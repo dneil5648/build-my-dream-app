@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  ArrowRightLeft, Building2, PieChart, TrendingUp, Wallet, Plus, Users, Loader2, 
+  ArrowRightLeft, Building2, PieChart as PieChartIcon, TrendingUp, Wallet, Plus, Users, Loader2, 
   ArrowDownToLine, ArrowUpFromLine, Send, AlertTriangle, RefreshCw, DollarSign,
   Layers, Clock, CheckCircle2, XCircle, ExternalLink, Landmark, Globe, Coins
 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { StatCard } from '@/components/shared/StatCard';
 import { AssetIcon } from '@/components/shared/AssetIcon';
 import { AccountSelector } from '@/components/shared/AccountSelector';
@@ -469,45 +470,98 @@ const TreasuryDashboard: React.FC = () => {
               changeType="positive"
               icon={Coins}
             />
-            {/* Account Balance Breakdown Card */}
+            {/* Account Balance Pie Chart Card */}
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Wallet className="h-4 w-4" />
+                  <PieChartIcon className="h-4 w-4" />
                   Account Balances
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
                 {loadingAllBalances || loadingAccounts ? (
-                  <div className="flex items-center justify-center py-3">
+                  <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
                 ) : accounts.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-2">No accounts</p>
-                ) : (
-                  <div className="space-y-2 max-h-[120px] overflow-y-auto">
-                    {accounts.map((account: PaxosAccount, index: number) => {
-                      // Calculate total balance for this account
-                      const accountBalances = allBalances.filter(b => 
-                        b.account_id === account.id && TREASURY_STABLECOINS.includes(b.asset)
-                      );
-                      const accountTotal = accountBalances.reduce((sum, b) => {
-                        return sum + parseFloat(b.available || '0') + parseFloat(b.trading || '0');
-                      }, 0);
-                      
-                      return (
-                        <div key={account.id} className="flex items-center justify-between text-sm">
-                          <span className="text-foreground truncate max-w-[120px]" title={account.nickname || `Wallet ${index + 1}`}>
-                            {account.nickname || `Wallet ${index + 1}`}
-                          </span>
-                          <span className="font-medium text-foreground">
-                            ${accountTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                  <p className="text-sm text-muted-foreground text-center py-8">No accounts</p>
+                ) : (() => {
+                  const CHART_COLORS = [
+                    'hsl(var(--module-treasury))',
+                    'hsl(var(--primary))',
+                    'hsl(var(--success))',
+                    'hsl(var(--warning))',
+                    'hsl(var(--accent))',
+                    'hsl(210, 70%, 50%)',
+                    'hsl(280, 60%, 55%)',
+                    'hsl(30, 80%, 55%)',
+                  ];
+                  
+                  const pieData = accounts.map((account: PaxosAccount, index: number) => {
+                    const accountBalances = allBalances.filter(b => 
+                      b.account_id === account.id && TREASURY_STABLECOINS.includes(b.asset)
+                    );
+                    const value = accountBalances.reduce((sum, b) => {
+                      return sum + parseFloat(b.available || '0') + parseFloat(b.trading || '0');
+                    }, 0);
+                    
+                    return {
+                      name: account.nickname || `Wallet ${index + 1}`,
+                      value,
+                      percentage: totalBalance > 0 ? (value / totalBalance) * 100 : 0,
+                      color: CHART_COLORS[index % CHART_COLORS.length],
+                    };
+                  }).filter(d => d.value > 0);
+                  
+                  if (pieData.length === 0) {
+                    return <p className="text-sm text-muted-foreground text-center py-8">No balances</p>;
+                  }
+                  
+                  return (
+                    <div className="h-[100px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={25}
+                            outerRadius={40}
+                            paddingAngle={2}
+                            dataKey="value"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={entry.color}
+                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                return (
+                                  <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg animate-scale-in">
+                                    <p className="font-medium text-foreground text-sm">{data.name}</p>
+                                    <p className="text-muted-foreground text-xs">
+                                      ${data.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </p>
+                                    <p className="text-module-treasury font-semibold text-sm">
+                                      {data.percentage.toFixed(1)}%
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
             <StatCard
